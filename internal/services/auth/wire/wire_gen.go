@@ -8,6 +8,7 @@ package authwire
 
 import (
 	"database/sql"
+	"github.com/Noname2812/go-ecommerce-backend-api/internal/common/utils/cache"
 	"github.com/Noname2812/go-ecommerce-backend-api/internal/services/auth/application/command/handler"
 	"github.com/Noname2812/go-ecommerce-backend-api/internal/services/auth/infrastructure/persistence/userbase"
 	"github.com/Noname2812/go-ecommerce-backend-api/internal/services/auth/infrastructure/service"
@@ -22,9 +23,9 @@ import (
 
 func InitAuthHttpCommandHandler(db *sql.DB, rdb *redis.Client, logger *zap.Logger, kafkaManager *kafka.Manager) authcommandhandler.AuthCommandHttpHandler {
 	userBaseRepository := userbaserepositoryimpl.NewUserBaseRepository(db)
-	authCacheService := authserviceimpl.NewAuthCacheService(rdb)
+	redisCache := cacheservice.NewRedisCache(rdb)
 	authEventPublisher := authmessagingserviceimpl.NewAuthEventPublisher(kafkaManager, logger)
-	authCommandService := authserviceimpl.NewAuthCommandService(logger, userBaseRepository, authCacheService, authEventPublisher)
+	authCommandService := authserviceimpl.NewAuthCommandService(logger, userBaseRepository, redisCache, authEventPublisher)
 	authCommandHttpHandler := authcommandhandler.NewAuthCommandHttpHandler(authCommandService, logger)
 	return authCommandHttpHandler
 }

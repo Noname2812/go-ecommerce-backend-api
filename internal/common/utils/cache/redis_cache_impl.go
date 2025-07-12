@@ -1,4 +1,4 @@
-package cache
+package cacheservice
 
 import (
 	"context"
@@ -17,7 +17,15 @@ type sRedisCache struct {
 	locker *redislock.Client
 }
 
-func NewRedisCache(client *redis.Client) *sRedisCache {
+// Expire implements RedisCache.
+func (s *sRedisCache) Expire(ctx context.Context, key string, expiration time.Duration) error {
+	if err := s.client.Expire(ctx, key, expiration).Err(); err != nil {
+		return fmt.Errorf("redis expire error: %w", err)
+	}
+	return nil
+}
+
+func NewRedisCache(client *redis.Client) RedisCache {
 	return &sRedisCache{
 		client: client,
 		locker: redislock.New(client),
@@ -26,7 +34,6 @@ func NewRedisCache(client *redis.Client) *sRedisCache {
 
 func (s *sRedisCache) Get(ctx context.Context, key string) (string, error) {
 	val, err := s.client.Get(ctx, key).Result()
-	// fmt.Println("val:", val)
 	if err != nil {
 		if errors.Is(err, redis.Nil) {
 			return val, nil
@@ -34,15 +41,15 @@ func (s *sRedisCache) Get(ctx context.Context, key string) (string, error) {
 		return val, fmt.Errorf("redis get error: %w", err)
 	}
 
-	return val, nil // Trả về chuỗi JSON.
+	return val, nil
 }
 
-func (s *sRedisCache) Set(ctx context.Context, key string, value interface{}, expirationSeconds int) error {
+func (s *sRedisCache) Set(ctx context.Context, key string, value interface{}, expiration time.Duration) error {
 	b, err := json.Marshal(value)
 	if err != nil {
 		return fmt.Errorf("json marshal error: %w", err)
 	}
-	if err := s.client.Set(ctx, key, b, time.Duration(expirationSeconds)*time.Second).Err(); err != nil {
+	if err := s.client.Set(ctx, key, b, expiration).Err(); err != nil {
 		return fmt.Errorf("redis set error: %w", err)
 	}
 	return nil

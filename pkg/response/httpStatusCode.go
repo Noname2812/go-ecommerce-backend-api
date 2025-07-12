@@ -6,6 +6,7 @@ const (
 	// common
 	ErrCodeSuccess      = 20001 // Success
 	ErrCodeParamInvalid = 20002 // param is invalid
+	ErrServerError      = 20003 // server error
 
 	// Email
 	ErrCodeEmailInvalid        = 20010 // Email is invalid
@@ -36,6 +37,7 @@ const (
 // message
 var msg = map[int]string{
 	ErrCodeSuccess:             "Success",
+	ErrServerError:             "Server error",
 	ErrCodeParamInvalid:        "Param is invalid",
 	ErrCodeEmailInvalid:        "Email is invalid",
 	ErrCodeEmailExistsUserBase: "Email is exists",

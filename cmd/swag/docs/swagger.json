@@ -38,7 +38,47 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/usercommandrequest.UserRegistratorRequest"
+                            "$ref": "#/definitions/authcommandrequest.UserRegistratorRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.ResponseData"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponseData"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/verify-account": {
+            "post": {
+                "description": "When user is verified otp from email",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "account management"
+                ],
+                "summary": "Verify OTP",
+                "parameters": [
+                    {
+                        "description": "payload",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/authcommandrequest.VerifyOTPRequest"
                         }
                     }
                 ],
@@ -98,6 +138,37 @@
         }
     },
     "definitions": {
+        "authcommandrequest.UserRegistratorRequest": {
+            "type": "object",
+            "required": [
+                "email",
+                "purpose"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "purpose": {
+                    "description": "TEST_USER, CUSTOMER, ADMIN, etc.",
+                    "type": "string"
+                }
+            }
+        },
+        "authcommandrequest.VerifyOTPRequest": {
+            "type": "object",
+            "required": [
+                "email",
+                "otp"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "otp": {
+                    "type": "string"
+                }
+            }
+        },
         "response.ErrorResponseData": {
             "type": "object",
             "properties": {
@@ -125,22 +196,6 @@
                 },
                 "success": {
                     "type": "boolean"
-                }
-            }
-        },
-        "usercommandrequest.UserRegistratorRequest": {
-            "type": "object",
-            "required": [
-                "email",
-                "purpose"
-            ],
-            "properties": {
-                "email": {
-                    "type": "string"
-                },
-                "purpose": {
-                    "description": "TEST_USER, CUSTOMER, ADMIN, etc.",
-                    "type": "string"
                 }
             }
         }

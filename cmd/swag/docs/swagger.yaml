@@ -1,5 +1,26 @@
 basePath: /v1
 definitions:
+  authcommandrequest.UserRegistratorRequest:
+    properties:
+      email:
+        type: string
+      purpose:
+        description: TEST_USER, CUSTOMER, ADMIN, etc.
+        type: string
+    required:
+    - email
+    - purpose
+    type: object
+  authcommandrequest.VerifyOTPRequest:
+    properties:
+      email:
+        type: string
+      otp:
+        type: string
+    required:
+    - email
+    - otp
+    type: object
   response.ErrorResponseData:
     properties:
       code:
@@ -19,17 +40,6 @@ definitions:
         type: string
       success:
         type: boolean
-    type: object
-  usercommandrequest.UserRegistratorRequest:
-    properties:
-      email:
-        type: string
-      purpose:
-        description: TEST_USER, CUSTOMER, ADMIN, etc.
-        type: string
-    required:
-    - email
-    - purpose
     type: object
 host: localhost:8002
 info:
@@ -56,7 +66,7 @@ paths:
         name: payload
         required: true
         schema:
-          $ref: '#/definitions/usercommandrequest.UserRegistratorRequest'
+          $ref: '#/definitions/authcommandrequest.UserRegistratorRequest'
       produces:
       - application/json
       responses:
@@ -69,6 +79,32 @@ paths:
           schema:
             $ref: '#/definitions/response.ErrorResponseData'
       summary: User Registration
+      tags:
+      - account management
+  /auth/verify-account:
+    post:
+      consumes:
+      - application/json
+      description: When user is verified otp from email
+      parameters:
+      - description: payload
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/authcommandrequest.VerifyOTPRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.ResponseData'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponseData'
+      summary: Verify OTP
       tags:
       - account management
   /user/{id}:

@@ -16,9 +16,9 @@ import (
 var ctx = context.Background()
 
 var (
-	redisRetryCount = 0        // Biến đếm số lần retry
-	maxRetries      = 3        // Số lần retry tối đa
-	redisMutex      sync.Mutex // Mutex để tránh race condition
+	redisRetryCount = 0        // count retry connect
+	maxRetries      = 3        // max count retry connect
+	redisMutex      sync.Mutex // Mutex lock
 )
 
 func NewRedis(config setting.RedisSetting, logger *logger.LoggerZap) *redis.Client {
@@ -71,36 +71,36 @@ func NewRedis(config setting.RedisSetting, logger *logger.LoggerZap) *redis.Clie
 }
 
 // advanced
-// func InitRedisSentinel() {
-// 	rdb := redis.NewFailoverClient(&redis.FailoverOptions{
-// 		MasterName:    "mymaster", // Tên master do Sentinel quản lý
-// 		SentinelAddrs: []string{"127.0.0.1:26379", "127.0.0.1:26380", "127.0.0.1:26381"},
-// 		DB:            0,        // Sử dụng database mặc định
-// 		Password:      "123456", // Nếu Redis có mật khẩu, điền vào đây
-// 	})
+func InitRedisSentinel() {
+	// rdb := redis.NewFailoverClient(&redis.FailoverOptions{
+	// 	MasterName:    "mymaster", // Tên master do Sentinel quản lý
+	// 	SentinelAddrs: []string{"127.0.0.1:26379", "127.0.0.1:26380", "127.0.0.1:26381"},
+	// 	DB:            0,        // Sử dụng database mặc định
+	// 	Password:      "123456", // Nếu Redis có mật khẩu, điền vào đây
+	// })
 
-// 	// Check the connection
-// 	_, err := rdb.Ping(ctx).Result()
-// 	if err != nil {
-// 		log.Fatalf("Failed to connect to Redis Sentinel: %v", err)
-// 	}
+	// // Check the connection
+	// _, err := rdb.Ping(ctx).Result()
+	// if err != nil {
+	// 	log.Fatalf("Failed to connect to Redis Sentinel: %v", err)
+	// }
 
-// 	fmt.Println("Connected to Redis Sentinel successfully!")
+	// fmt.Println("Connected to Redis Sentinel successfully!")
 
-// 	// Try setting and getting a value
-// 	err = rdb.Set(ctx, "test_key", "Hello Redis Sentinel!", 0).Err()
-// 	if err != nil {
-// 		log.Fatalf("Error setting key: %v", err)
-// 	}
+	// // Try setting and getting a value
+	// err = rdb.Set(ctx, "test_key", "Hello Redis Sentinel!", 0).Err()
+	// if err != nil {
+	// 	log.Fatalf("Error setting key: %v", err)
+	// }
 
-// 	val, err := rdb.Get(ctx, "test_key").Result()
-// 	if err != nil {
-// 		log.Fatalf("Error getting key: %v", err)
-// 	}
+	// val, err := rdb.Get(ctx, "test_key").Result()
+	// if err != nil {
+	// 	log.Fatalf("Error getting key: %v", err)
+	// }
 
-// 	fmt.Println("Value of test_key:", val)
+	// fmt.Println("Value of test_key:", val)
 
-// 	global.Logger.Info("Initializing RedisSentinel Successfully")
-// 	global.Rdb = rdb
-// 	// redisExample()
-// }
+	// global.Logger.Info("Initializing RedisSentinel Successfully")
+	// global.Rdb = rdb
+	// redisExample()
+}

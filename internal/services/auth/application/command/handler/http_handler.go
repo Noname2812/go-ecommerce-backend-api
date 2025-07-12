@@ -1,7 +1,7 @@
 package authcommandhandler
 
 import (
-	authcommandrequest "github.com/Noname2812/go-ecommerce-backend-api/internal/services/auth/application/command/dto"
+	authcommandrequest "github.com/Noname2812/go-ecommerce-backend-api/internal/services/auth/application/command/dto/request"
 	authservice "github.com/Noname2812/go-ecommerce-backend-api/internal/services/auth/application/service"
 	"github.com/Noname2812/go-ecommerce-backend-api/pkg/response"
 	"github.com/gin-gonic/gin"
@@ -13,13 +13,50 @@ type authCommandHandler struct {
 	logger *zap.Logger
 }
 
+// User Verification OTP documentation
+// @Summary      Verify OTP
+// @Description  When user is verified otp from email
+// @Tags         account management
+// @Accept       json
+// @Produce      json
+// @Param        payload body authcommandrequest.VerifyOTPRequest true "payload"
+// @Success      200  {object}  response.ResponseData
+// @Failure      500  {object}  response.ErrorResponseData
+// @Router       /auth/verify-account [post]
+func (a *authCommandHandler) VerifyOTP(ctx *gin.Context) {
+	var body authcommandrequest.VerifyOTPRequest
+
+	// Parse JSON payload
+	if err := ctx.ShouldBindJSON(&body); err != nil {
+		a.logger.Warn("Invalid registration payload",
+			zap.String("trace_id", ctx.GetString("trace_id")),
+			zap.Error(err),
+		)
+		response.ErrorResponse(ctx, response.ErrCodeParamInvalid, "Email is invalid")
+		return
+	}
+
+	code, data, err := a.acs.VerifyOTP(ctx.Request.Context(), &body)
+	if err != nil {
+		a.logger.Error("OTP is invalid",
+			zap.String("trace_id", ctx.GetString("trace_id")),
+			zap.String("email", body.Email),
+			zap.Int("err_code", code),
+			zap.Error(err),
+		)
+		response.ErrorResponse(ctx, code, err.Error())
+		return
+	}
+	response.SuccessResponse(ctx, code, data)
+}
+
 // User Registration documentation
 // @Summary      User Registration
 // @Description  When user is registered send otp to email
 // @Tags         account management
 // @Accept       json
 // @Produce      json
-// @Param        payload body usercommandrequest.UserRegistratorRequest true "payload"
+// @Param        payload body authcommandrequest.UserRegistratorRequest true "payload"
 // @Success      200  {object}  response.ResponseData
 // @Failure      500  {object}  response.ErrorResponseData
 // @Router       /auth/register [post]
