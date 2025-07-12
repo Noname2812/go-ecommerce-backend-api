@@ -17,7 +17,6 @@ import (
 	authdomainevent "github.com/Noname2812/go-ecommerce-backend-api/internal/services/auth/domain/event"
 	authrepository "github.com/Noname2812/go-ecommerce-backend-api/internal/services/auth/domain/repository"
 	"github.com/Noname2812/go-ecommerce-backend-api/pkg/response"
-	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 )
 
@@ -146,17 +145,16 @@ func (a *authCommandService) Register(ctx context.Context, input *authcommandreq
 	// 4. save OTP in Redis with expiration time
 	countSend, err := a.redisCacheService.Get(ctx, fmt.Sprintf(OTP_COUNT_SEND_KEY, hashKey))
 	if err != nil {
-		if err == redis.Nil {
-			// set first time send OTP
-			_, err = a.redisCacheService.Incr(ctx, fmt.Sprintf(OTP_COUNT_SEND_KEY, hashKey))
-			if err != nil {
-				return response.ErrServerError, err
-			}
-			err = a.redisCacheService.Expire(ctx, fmt.Sprintf(OTP_COUNT_SEND_KEY, hashKey), OTP_COUNT_SEND_KEY_TTL)
-			if err != nil {
-				return response.ErrServerError, err
-			}
-		} else {
+		return response.ErrServerError, err
+	}
+	if countSend == "" {
+		// set first time send OTP
+		_, err = a.redisCacheService.Incr(ctx, fmt.Sprintf(OTP_COUNT_SEND_KEY, hashKey))
+		if err != nil {
+			return response.ErrServerError, err
+		}
+		err = a.redisCacheService.Expire(ctx, fmt.Sprintf(OTP_COUNT_SEND_KEY, hashKey), OTP_COUNT_SEND_KEY_TTL)
+		if err != nil {
 			return response.ErrServerError, err
 		}
 	} else {

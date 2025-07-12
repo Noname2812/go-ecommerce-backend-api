@@ -36,12 +36,12 @@ func (s *sRedisCache) Get(ctx context.Context, key string) (string, error) {
 	val, err := s.client.Get(ctx, key).Result()
 	if err != nil {
 		if errors.Is(err, redis.Nil) {
-			return val, nil
+			return val, nil //val = ""
 		}
 		return val, fmt.Errorf("redis get error: %w", err)
 	}
 
-	return val, nil
+	return val, nil // string json
 }
 
 func (s *sRedisCache) Set(ctx context.Context, key string, value interface{}, expiration time.Duration) error {
