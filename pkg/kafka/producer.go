@@ -12,42 +12,11 @@ import (
 	"go.uber.org/zap"
 )
 
-type ProducerOption func(*kafka.Writer)
-
-// WithBalancer allows setting a custom balancer.
-func WithBalancer(balancer kafka.Balancer) ProducerOption {
-	return func(w *kafka.Writer) {
-		w.Balancer = balancer
-	}
-}
-
-// WithAsync allows enabling/disabling async sending.
-func WithAsync(async bool) ProducerOption {
-	return func(w *kafka.Writer) {
-		w.Async = async
-	}
-}
-
-// WithBatchSize allows setting the batch size.
-func WithBatchSize(batchSize int) ProducerOption {
-	return func(w *kafka.Writer) {
-		w.BatchSize = batchSize
-	}
-}
-
-// WithBatchTimeout allows setting the batch timeout.
-func WithBatchTimeout(timeout time.Duration) ProducerOption {
-	return func(w *kafka.Writer) {
-		w.BatchTimeout = timeout
-	}
-}
-
-// WithRequiredAcks allows configuring the required acks (0, 1, all).
-func WithRequiredAcks(acks kafka.RequiredAcks) ProducerOption {
-	return func(w *kafka.Writer) {
-		w.RequiredAcks = acks
-	}
-}
+// Always retry on errors
+const (
+	MAX_RETRIES    = 3                      // Maximum number of retry attempts
+	BACK_OFF_DELAY = 100 * time.Millisecond // Back-off delay between retry attempts
+)
 
 type TopicConfig struct {
 	Async        bool               // Enable asynchronous sending. If true, messages are sent without waiting for a response.
@@ -94,15 +63,43 @@ func (p *Producer) SendMessage(ctx context.Context, topic string, key []byte, va
 		Time:  time.Now(),
 	}
 
-	if err := writer.WriteMessages(ctx, msg); err != nil {
+	var lastErr error
+	for attempt := 1; attempt <= MAX_RETRIES; attempt++ {
+		err := writer.WriteMessages(ctx, msg)
+		if err == nil {
+			p.logger.Info("kafka message sent",
+				zap.String("topic", topic),
+				zap.ByteString("key", key),
+				zap.Int("attempt", attempt),
+			)
+			return nil
+		}
+		lastErr = err
+		p.logger.Warn("failed to write kafka message",
+			zap.String("topic", topic),
+			zap.ByteString("key", key),
+			zap.Int("attempt", attempt),
+			zap.Error(err),
+		)
+
+		// Exponential backoff
+		backoff := time.Duration(attempt) * BACK_OFF_DELAY
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("context canceled during retry: %w", ctx.Err())
+		case <-time.After(backoff):
+			// continue retrying
+		}
+	}
+
+	if lastErr != nil {
 		p.logger.Error("failed to write kafka message",
 			zap.String("topic", topic),
 			zap.ByteString("key", key),
 			zap.Error(err),
 		)
-		return fmt.Errorf("failed to write message: %w", err)
+		return fmt.Errorf("failed to write message: %w", lastErr)
 	}
-
 	p.logger.Info("kafka message sent",
 		zap.String("topic", topic),
 		zap.ByteString("key", key),

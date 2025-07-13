@@ -40,7 +40,6 @@ func (m *Manager) AddConsumer(
 	handler MessageHandler,
 	workerCount int,
 	configOpts []ConfigOption,
-	consumerOpts ...ConsumerOption,
 ) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -61,7 +60,6 @@ func (m *Manager) AddConsumer(
 		m.logger,
 		workerCount,
 		configOpts,
-		consumerOpts...,
 	)
 
 	consumerInfo := &ConsumerInfo{
