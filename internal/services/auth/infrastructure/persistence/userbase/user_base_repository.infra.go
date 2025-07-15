@@ -27,8 +27,15 @@ func (u *userBaseRepository) CheckUserBaseExists(ctx context.Context, email stri
 }
 
 // CreateUserBase implements repository.UserBaseRepository.
-func (u *userBaseRepository) CreateUserBase(ctx context.Context, user *authmodel.UserBase) error {
-	panic("unimplemented")
+func (u *userBaseRepository) CreateUserBase(ctx context.Context, tx *sql.Tx, user *authmodel.UserBase) error {
+	txQueries := u.sqlc.WithTx(tx)
+	data := &database.AddUserBaseParams{
+		UserAccount:  user.UserAccount.String(),
+		UserPassword: user.UserPassword,
+		UserSalt:     user.UserSalt,
+	}
+	_, err := txQueries.AddUserBase(ctx, *data)
+	return err
 }
 
 // DeleteUserBase implements repository.UserBaseRepository.

@@ -5,6 +5,7 @@ import (
 
 	"github.com/Noname2812/go-ecommerce-backend-api/global"
 	"github.com/Noname2812/go-ecommerce-backend-api/pkg/db"
+	grpcserver "github.com/Noname2812/go-ecommerce-backend-api/pkg/grpc"
 	"github.com/Noname2812/go-ecommerce-backend-api/pkg/kafka"
 	"github.com/Noname2812/go-ecommerce-backend-api/pkg/logger"
 	redispkg "github.com/Noname2812/go-ecommerce-backend-api/pkg/redis"
@@ -15,10 +16,11 @@ import (
 )
 
 type AppContainer struct {
-	DB           *sql.DB
-	RedisClient  *redis.Client
-	KafkaManager *kafka.Manager
-	Logger       *zap.Logger
+	DB                *sql.DB
+	RedisClient       *redis.Client
+	KafkaManager      *kafka.Manager
+	Logger            *zap.Logger
+	GRPCServerManager *grpcserver.GRPCServerManager
 }
 
 func NewAppContainer(config *setting.Config) (*AppContainer, error) {
@@ -27,6 +29,7 @@ func NewAppContainer(config *setting.Config) (*AppContainer, error) {
 	db := db.NewMySqlC(config.Mysql, log)
 	redisClient := redispkg.NewRedis(config.Redis, log)
 	kafkaManager := kafka.NewManager(config.Kafka.Brokers, log.Logger)
+	GRPCServerManager := grpcserver.NewGRPCServerManager()
 
 	// save global
 	global.KafkaManager = kafkaManager
@@ -35,9 +38,10 @@ func NewAppContainer(config *setting.Config) (*AppContainer, error) {
 	global.Rdb = redisClient
 
 	return &AppContainer{
-		DB:           db,
-		RedisClient:  redisClient,
-		KafkaManager: kafkaManager,
-		Logger:       log.Logger,
+		DB:                db,
+		RedisClient:       redisClient,
+		KafkaManager:      kafkaManager,
+		Logger:            log.Logger,
+		GRPCServerManager: GRPCServerManager,
 	}, nil
 }

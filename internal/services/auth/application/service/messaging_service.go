@@ -9,4 +9,5 @@ import (
 type AuthEventPublisher interface {
 	Register()
 	PublishOtpVertifyUserRegisterCreated(ctx context.Context, event *authdomainevent.OtpVertifyUserRegisterCreated) error
+	PublishUserBaseInsertedFail(ctx context.Context, event *authdomainevent.UserBaseInsertedFail) error
 }

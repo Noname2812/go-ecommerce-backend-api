@@ -4,7 +4,9 @@ import (
 	"context"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
+	"time"
 
 	_ "github.com/Noname2812/go-ecommerce-backend-api/cmd/swag/docs"
 	"github.com/Noname2812/go-ecommerce-backend-api/internal/initialize"
@@ -54,27 +56,51 @@ func main() {
 		panic("Init app contaier failed")
 	}
 
-	// init http router
-	r := router.InitHttpRouter(config, appContainer)
-
 	// init grpc server
 	router.InitGrpcServer(config, appContainer)
 
-	// start all consumers kafka
+	// init kafka
 	initialize.InitKafka(ctx, config, appContainer)
+
+	// init http router
+	r := router.InitHttpRouter(config, appContainer)
 
 	go func() {
 		<-sigChan
-		appContainer.Logger.Info("shutting down gracefully...")
 		cancel()
+		shutdownCtx, cancelShutdown := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancelShutdown()
 
-		if err := appContainer.KafkaManager.Close(); err != nil {
-			appContainer.Logger.Error("failed to close kafka manager", zap.Error(err))
-		} else {
-			appContainer.Logger.Info("kafka manager closed successfully")
-		}
+		var wg sync.WaitGroup
+		wg.Add(2)
+
+		// closing kafka
+		go func() {
+			defer wg.Done()
+			if err := appContainer.KafkaManager.Close(); err != nil {
+				appContainer.Logger.Error("Failed to close Kafka manager", zap.Error(err))
+			} else {
+				appContainer.Logger.Info("Kafka manager closed successfully")
+			}
+		}()
+
+		// closing grpc
+		go func() {
+			defer wg.Done()
+			if err := appContainer.GRPCServerManager.Shutdown(shutdownCtx); err != nil {
+				appContainer.Logger.Error("Failed to shut down gRPC", zap.Error(err))
+			} else {
+				appContainer.Logger.Info("gRPC manager shut down successfully")
+			}
+		}()
+
+		// wait until both goroutines done
+		wg.Wait()
+
+		appContainer.Logger.Info("All services stopped. Exiting.")
 		os.Exit(0)
 	}()
+
 	// prometheus
 	prometheus.MustRegister(pingCounter)
 

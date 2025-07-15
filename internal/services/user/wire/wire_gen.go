@@ -8,8 +8,11 @@ package userwire
 
 import (
 	"database/sql"
+	"github.com/Noname2812/go-ecommerce-backend-api/internal/common/protogen/user"
 	"github.com/Noname2812/go-ecommerce-backend-api/internal/services/user/application/command/handler"
+	"github.com/Noname2812/go-ecommerce-backend-api/internal/services/user/application/messaging"
 	"github.com/Noname2812/go-ecommerce-backend-api/internal/services/user/application/query/handler"
+	"github.com/Noname2812/go-ecommerce-backend-api/internal/services/user/infrastructure/grpc"
 	"github.com/Noname2812/go-ecommerce-backend-api/internal/services/user/infrastructure/messaging"
 	"github.com/Noname2812/go-ecommerce-backend-api/internal/services/user/infrastructure/persistence/userinfo"
 	"github.com/Noname2812/go-ecommerce-backend-api/internal/services/user/infrastructure/service"
@@ -29,12 +32,25 @@ func InitUserQueryHandler(db *sql.DB, logger *zap.Logger) userqueryhandler.UserQ
 }
 
 func InitUserCommandHandler(db *sql.DB, logger *zap.Logger, manager *kafka.Manager, redisClient *redis.Client) usercommandhandler.UserCommandHandler {
-	userCacheService := userserviceimpl.NewUserCacheService(redisClient)
-	userPublisherHandler := useremessagingimpl.NewuserEventPublisher(manager, logger)
+	userPublisherHandler := useremessagingimpl.NewUserEventPublisher(manager, logger)
 	userInfoRepository := userinforepositoryimpl.NewUserInfoRepository(db)
-	userCommandService := userserviceimpl.NewUserCommandService(userCacheService, userPublisherHandler, userInfoRepository)
+	userCommandService := userserviceimpl.NewUserCommandService(userPublisherHandler, userInfoRepository, redisClient)
 	userCommandHandler := usercommandhandler.NewUserCommandHandler(logger, userCommandService)
 	return userCommandHandler
+}
+
+func InitUserServiceServer(db *sql.DB, logger *zap.Logger) user.UserServiceServer {
+	userInfoRepository := userinforepositoryimpl.NewUserInfoRepository(db)
+	userServiceServer := userserviceserver.NewUserServiceServer(userInfoRepository)
+	return userServiceServer
+}
+
+func InitUserConsumer(db *sql.DB, logger *zap.Logger, manager *kafka.Manager, redisClient *redis.Client) usermessaging.UserConsumerHandler {
+	userPublisherHandler := useremessagingimpl.NewUserEventPublisher(manager, logger)
+	userInfoRepository := userinforepositoryimpl.NewUserInfoRepository(db)
+	userCommandService := userserviceimpl.NewUserCommandService(userPublisherHandler, userInfoRepository, redisClient)
+	userConsumerHandler := useremessagingimpl.NewUserConsumer(manager, logger, userCommandService)
+	return userConsumerHandler
 }
 
 // user.wire.go:

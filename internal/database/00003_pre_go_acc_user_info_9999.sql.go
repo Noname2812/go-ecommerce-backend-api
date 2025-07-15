@@ -81,6 +81,15 @@ func (q *Queries) AddUserHaveUserId(ctx context.Context, arg AddUserHaveUserIdPa
 	)
 }
 
+const deleteForceUser = `-- name: DeleteForceUser :exec
+DELETE FROM acc_user_info WHERE user_account = ?
+`
+
+func (q *Queries) DeleteForceUser(ctx context.Context, userAccount string) error {
+	_, err := q.db.ExecContext(ctx, deleteForceUser, userAccount)
+	return err
+}
+
 const editUserByUserId = `-- name: EditUserByUserId :execresult
 UPDATE ` + "`" + `acc_user_info` + "`" + `
 SET user_nickname = ?, user_avatar = ?, user_phone = ?, 

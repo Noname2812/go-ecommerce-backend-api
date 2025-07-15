@@ -2,20 +2,26 @@ package authserviceimpl
 
 import (
 	"context"
+	"database/sql"
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/Noname2812/go-ecommerce-backend-api/internal/common/consts"
+	userpb "github.com/Noname2812/go-ecommerce-backend-api/internal/common/protogen/user"
 	cacheservice "github.com/Noname2812/go-ecommerce-backend-api/internal/common/utils/cache"
 	"github.com/Noname2812/go-ecommerce-backend-api/internal/common/utils/crypto"
 	"github.com/Noname2812/go-ecommerce-backend-api/internal/common/utils/random"
+	commonvo "github.com/Noname2812/go-ecommerce-backend-api/internal/common/vo"
 	authcommandrequest "github.com/Noname2812/go-ecommerce-backend-api/internal/services/auth/application/command/dto/request"
 	authcommandresponse "github.com/Noname2812/go-ecommerce-backend-api/internal/services/auth/application/command/dto/response"
 	authservice "github.com/Noname2812/go-ecommerce-backend-api/internal/services/auth/application/service"
 	authdomainevent "github.com/Noname2812/go-ecommerce-backend-api/internal/services/auth/domain/event"
+	authmodel "github.com/Noname2812/go-ecommerce-backend-api/internal/services/auth/domain/model"
 	authrepository "github.com/Noname2812/go-ecommerce-backend-api/internal/services/auth/domain/repository"
+	authclientgrpc "github.com/Noname2812/go-ecommerce-backend-api/internal/services/auth/infrastructure/client"
 	"github.com/Noname2812/go-ecommerce-backend-api/pkg/response"
 	"go.uber.org/zap"
 )
@@ -36,6 +42,7 @@ const (
 	OTP_MAX_COUNT_SEND = 10 // Max send 10 OTP
 	VERIFY_OTP_MAX_TRY = 5  // Max 5 tries to verify OTP
 	MAX_LENGHT_TOKEN   = 24 // Max length token generated
+	MAX_LENGHT_SALT    = 32 // Max length salt
 )
 
 type authCommandService struct {
@@ -43,6 +50,79 @@ type authCommandService struct {
 	userBaseRepo       authrepository.UserBaseRepository
 	redisCacheService  cacheservice.RedisCache
 	authEventPublisher authservice.AuthEventPublisher
+	db                 *sql.DB
+	userClient         *authclientgrpc.UserGRPCClient
+}
+
+// SaveAccount implements authservice.AuthCommandService.
+func (a *authCommandService) SaveAccount(ctx context.Context, input *authcommandrequest.SaveAccountRequest) (code int, err error) {
+	hashKey := crypto.GetHash(strings.ToLower(input.Email))
+	// 1. check user exists in user base
+	userFound, err := a.userBaseRepo.CheckUserBaseExists(ctx, input.Email)
+	if err != nil {
+		return response.ErrServerError, err
+	}
+	if userFound {
+		return response.ErrCodeEmailExistsUserBase, fmt.Errorf("email already exists")
+	}
+	// 2. check token
+	raw, err := a.redisCacheService.Get(ctx, fmt.Sprintf(TOKEN_UPDATE_INFO_KEY, hashKey))
+	if err != nil {
+		return response.ErrServerError, err
+	}
+	var token string
+	if err := json.Unmarshal([]byte(raw), &token); err != nil {
+		return response.ErrServerError, err
+	}
+	if token != input.Token {
+		return response.ErrInvalidToken, fmt.Errorf("invalid token")
+	}
+
+	email, err := commonvo.NewEmail(input.Email)
+	if err != nil {
+		a.logger.Warn("Email is invalid", zap.String("email", email.String()), zap.Error(err))
+		return response.ErrCodeEmailInvalid, err
+	}
+
+	tx, _ := a.db.BeginTx(ctx, nil)
+	// recover
+	defer func() {
+		if p := recover(); p != nil {
+			tx.Rollback()
+			panic(p)
+		}
+	}()
+	// 3. save user base
+	salt, _ := crypto.GenerateSalt(MAX_LENGHT_SALT)
+	password := crypto.HashPassword(input.Password, salt)
+	userBase := authmodel.NewUserBase(email, password, salt)
+	if err := a.userBaseRepo.CreateUserBase(ctx, tx, userBase); err != nil {
+		tx.Rollback()
+		return response.ErrServerError, err
+	}
+	// 4. save user info
+	req := &userpb.CreateUserRequest{
+		UserAccount:  input.Email,
+		UserNickName: input.Name,
+		UserPhone:    input.Phone,
+		UserGender:   int32(input.Gender),
+		UserBirthday: input.Birthday,
+	}
+
+	_, err = a.userClient.CreateUser(ctx, req)
+	if err != nil {
+		tx.Rollback()
+		return response.ErrServerError, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		// 5. send event user base inserted fail
+		event := &authdomainevent.UserBaseInsertedFail{Email: email.String(), Success: false}
+		_ = a.authEventPublisher.PublishUserBaseInsertedFail(ctx, event)
+		panic(err)
+	}
+
+	return response.ErrCodeSuccess, nil
 }
 
 // VerifyOTP implements authservice.AuthCommandService.
@@ -129,7 +209,7 @@ func (a *authCommandService) Register(ctx context.Context, input *authcommandreq
 	}
 
 	// 2. check user exists in user base
-	userFound, err := a.userBaseRepo.CheckUserBaseExists(ctx, hashKey)
+	userFound, err := a.userBaseRepo.CheckUserBaseExists(ctx, input.Email)
 	if err != nil {
 		return response.ErrServerError, err
 	}
@@ -193,11 +273,16 @@ func (a *authCommandService) Register(ctx context.Context, input *authcommandreq
 func NewAuthCommandService(logger *zap.Logger,
 	userBaseRepo authrepository.UserBaseRepository,
 	rdb cacheservice.RedisCache,
-	authEventPublisher authservice.AuthEventPublisher) authservice.AuthCommandService {
+	authEventPublisher authservice.AuthEventPublisher,
+	db *sql.DB,
+	userClient *authclientgrpc.UserGRPCClient,
+) authservice.AuthCommandService {
 	return &authCommandService{
 		logger:             logger,
 		userBaseRepo:       userBaseRepo,
 		redisCacheService:  rdb,
 		authEventPublisher: authEventPublisher,
+		db:                 db,
+		userClient:         userClient,
 	}
 }

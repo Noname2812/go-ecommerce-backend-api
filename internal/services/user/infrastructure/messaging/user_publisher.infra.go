@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 
 	usermessaging "github.com/Noname2812/go-ecommerce-backend-api/internal/services/user/application/messaging"
-	userdomainevent "github.com/Noname2812/go-ecommerce-backend-api/internal/services/user/domain/event"
 	"github.com/Noname2812/go-ecommerce-backend-api/pkg/kafka"
 	"go.uber.org/zap"
 )
@@ -15,23 +14,11 @@ type userEventPublisher struct {
 	logger       *zap.Logger
 }
 
-func NewuserEventPublisher(manager *kafka.Manager, logger *zap.Logger) usermessaging.UserPublisherHandler {
+func NewUserEventPublisher(manager *kafka.Manager, logger *zap.Logger) usermessaging.UserPublisherHandler {
 	return &userEventPublisher{
 		kafkaManager: manager,
 		logger:       logger,
 	}
-}
-
-func (p *userEventPublisher) PublishUserRegistered(ctx context.Context, event *userdomainevent.UserRegistered) error {
-	return p.publishEvent(ctx, event.EventName(), event.AggregateID(), event)
-}
-
-func (p *userEventPublisher) PublishUserUpdated(ctx context.Context, event *userdomainevent.UserUpdated) error {
-	return p.publishEvent(ctx, event.EventName(), event.AggregateID(), event)
-}
-
-func (p *userEventPublisher) PublishUserDeleted(ctx context.Context, event *userdomainevent.UserDeleted) error {
-	return p.publishEvent(ctx, event.EventName(), event.AggregateID(), event)
 }
 
 func (p *userEventPublisher) publishEvent(ctx context.Context, topic, key string, event interface{}) error {

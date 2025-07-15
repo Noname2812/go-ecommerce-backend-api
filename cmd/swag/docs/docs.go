@@ -64,6 +64,46 @@ const docTemplate = `{
                 }
             }
         },
+        "/auth/save-account": {
+            "post": {
+                "description": "When user has registered send otp to email",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "account management"
+                ],
+                "summary": "User Base Registration",
+                "parameters": [
+                    {
+                        "description": "payload",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/authcommandrequest.SaveAccountRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.ResponseData"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorResponseData"
+                        }
+                    }
+                }
+            }
+        },
         "/auth/verify-account": {
             "post": {
                 "description": "When user is verified otp from email",
@@ -144,6 +184,56 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "authcommandrequest.SaveAccountRequest": {
+            "type": "object",
+            "required": [
+                "confirm_pass",
+                "email",
+                "name",
+                "password",
+                "token"
+            ],
+            "properties": {
+                "birthday": {
+                    "description": "Ngày sinh (optional), định dạng yyyy-mm-dd",
+                    "type": "string"
+                },
+                "confirm_pass": {
+                    "description": "Xác nhận password phải giống Password",
+                    "type": "string"
+                },
+                "email": {
+                    "description": "Email bắt buộc và phải đúng định dạng",
+                    "type": "string"
+                },
+                "gender": {
+                    "description": "Giới tính: 0=male, 1=female, 2=other",
+                    "type": "integer",
+                    "enum": [
+                        0,
+                        1,
+                        2
+                    ]
+                },
+                "name": {
+                    "description": "Tên người dùng",
+                    "type": "string"
+                },
+                "password": {
+                    "description": "Password tối thiểu 8 ký tự",
+                    "type": "string",
+                    "minLength": 8
+                },
+                "phone": {
+                    "description": "Số điện thoại (optional, theo chuẩn E.164)",
+                    "type": "string"
+                },
+                "token": {
+                    "description": "token đăng kí thông tin người dùng",
+                    "type": "string"
+                }
+            }
+        },
         "authcommandrequest.UserRegistratorRequest": {
             "type": "object",
             "required": [

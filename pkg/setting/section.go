@@ -29,6 +29,7 @@ type GRPCSettings struct {
 type ServerSetting struct {
 	Port int    `mapstructure:"port"`
 	Mode string `mapstructure:"mode"`
+	Host string `mapstructure:"host"`
 }
 
 type RedisSetting struct {

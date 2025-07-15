@@ -39,6 +39,8 @@ SELECT * FROM acc_user_info LIMIT ? OFFSET ?;
 -- name: RemoveUser :exec
 DELETE FROM acc_user_info WHERE user_id = ?;
 
+-- name: DeleteForceUser :exec
+DELETE FROM acc_user_info WHERE user_account = ?;
 
 -- -- name: UpdatePassword :exec
 -- UPDATE `acc_user_info` SET user_password = ? WHERE user_id = ?;

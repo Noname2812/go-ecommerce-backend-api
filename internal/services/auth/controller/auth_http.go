@@ -9,13 +9,13 @@ import (
 )
 
 func InitAuthRouter(rg *gin.RouterGroup, container *initialize.AppContainer) {
-
-	authCommandHandler := authwire.InitAuthHttpCommandHandler(container.DB, container.RedisClient, container.Logger, container.KafkaManager)
+	authCommandHandler := authwire.InitAuthHttpCommandHandler(container.DB, container.RedisClient, container.Logger, container.KafkaManager, container.GRPCServerManager)
 	// public router
 	authRouterPublic := rg.Group("/auth")
 	{
 		authRouterPublic.POST("/register", authCommandHandler.Register)
 		authRouterPublic.POST("/verify-account", authCommandHandler.VerifyOTP)
+		authRouterPublic.POST("/save-account", authCommandHandler.SaveAccount)
 	}
 
 	// private router

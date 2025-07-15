@@ -16,12 +16,22 @@ type authPublisher struct {
 	logger       *zap.Logger
 }
 
+// PublishUserBaseInsertedFail implements authservice.AuthEventPublisher.
+func (a *authPublisher) PublishUserBaseInsertedFail(ctx context.Context, event *authdomainevent.UserBaseInsertedFail) error {
+	return a.publishEvent(ctx, event.EventName(), event.Email, event)
+}
+
 // Register implements authservice.AuthEventPublisher.
 func (a *authPublisher) Register() {
 	a.kafkaManager.RegisterTopic(commonkafka.TOPIC_OTP_CREATED, kafkaCustom.TopicConfig{
-		Async:        false,
+		Async:        true,
 		RequiredAcks: kafka.RequireOne,
 		Balancer:     &kafka.Hash{},
+	})
+	a.kafkaManager.RegisterTopic(commonkafka.TOPIC_USER_BASE_INSERTED, kafkaCustom.TopicConfig{
+		Async:        false,
+		RequiredAcks: kafka.RequireNone,
+		Balancer:     &kafka.RoundRobin{},
 	})
 }
 

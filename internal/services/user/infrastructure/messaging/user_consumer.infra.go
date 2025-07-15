@@ -4,69 +4,55 @@ import (
 	"context"
 	"encoding/json"
 
-	userdomainevent "github.com/Noname2812/go-ecommerce-backend-api/internal/services/user/domain/event"
+	commonkafka "github.com/Noname2812/go-ecommerce-backend-api/internal/common/kafka"
+	usermessaging "github.com/Noname2812/go-ecommerce-backend-api/internal/services/user/application/messaging"
+	usermessagingevent "github.com/Noname2812/go-ecommerce-backend-api/internal/services/user/application/messaging/dto"
+	userservice "github.com/Noname2812/go-ecommerce-backend-api/internal/services/user/application/service"
 	"github.com/Noname2812/go-ecommerce-backend-api/pkg/kafka"
 	"go.uber.org/zap"
+)
+
+const (
+	COUNT_WORKER_HANDLER_USER_BASE_INSERTED = 1
 )
 
 type userEventConsumer struct {
 	kafkaManager *kafka.Manager
 	logger       *zap.Logger
+	userService  userservice.UserCommandService
 }
 
-func NewUserEventConsumer(
+// HandleUserBaseInserted implements usermessaging.UserConsumerHandler.
+func (c *userEventConsumer) HandleUserBaseInserted(ctx context.Context, key []byte, value []byte) error {
+	var event usermessagingevent.UserBaseInserted
+	if err := json.Unmarshal(value, &event); err != nil {
+		c.logger.Error("Failed to unmarshal OTP event", zap.Error(err))
+		return err
+	}
+	if !event.Success {
+		err := c.userService.DeleteForceUser(ctx, event.Email)
+		return err
+	}
+	return nil
+}
+
+// Subscribe implements usermessaging.UserConsumerHandler.
+func (c *userEventConsumer) Subscribe() error {
+	// Register event handlers
+	if err := c.kafkaManager.AddConsumer(commonkafka.TOPIC_USER_BASE_INSERTED, commonkafka.GROUP_USER_BASE_INSERTED, c.HandleUserBaseInserted, COUNT_WORKER_HANDLER_USER_BASE_INSERTED, nil); err != nil {
+		return err
+	}
+	return nil
+}
+
+func NewUserConsumer(
 	kafkaManager *kafka.Manager,
 	logger *zap.Logger,
-) *userEventConsumer {
+	userService userservice.UserCommandService,
+) usermessaging.UserConsumerHandler {
 	return &userEventConsumer{
 		kafkaManager: kafkaManager,
 		logger:       logger,
+		userService:  userService,
 	}
-}
-
-func (c *userEventConsumer) SubscribeAllChannels(ctx context.Context) error {
-	// Register event handlers
-	if err := c.kafkaManager.AddConsumer("user.registered", "user-service", c.handleUserRegistered, 1, nil); err != nil {
-		return err
-	}
-
-	if err := c.kafkaManager.AddConsumer("user.updated", "user-service", c.handleUserUpdated, 1, nil); err != nil {
-		return err
-	}
-
-	if err := c.kafkaManager.AddConsumer("user.deleted", "user-service", c.handleUserDeleted, 1, nil); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (c *userEventConsumer) handleUserRegistered(ctx context.Context, key []byte, value []byte) error {
-	var event userdomainevent.UserRegistered
-	if err := json.Unmarshal(value, &event); err != nil {
-		c.logger.Error("failed to unmarshal user registered event", zap.Error(err))
-		return err
-	}
-
-	// Handle notification/cache logic here
-	return nil
-}
-
-func (c *userEventConsumer) handleUserUpdated(ctx context.Context, key []byte, value []byte) error {
-	var event userdomainevent.UserUpdated
-	if err := json.Unmarshal(value, &event); err != nil {
-		c.logger.Error("failed to unmarshal user updated event", zap.Error(err))
-		return err
-	}
-	// Handle notification/cache logic here
-	return nil
-}
-
-func (c *userEventConsumer) handleUserDeleted(ctx context.Context, key []byte, value []byte) error {
-	var event userdomainevent.UserDeleted
-	if err := json.Unmarshal(value, &event); err != nil {
-		c.logger.Error("failed to unmarshal user deleted event", zap.Error(err))
-		return err
-	}
-	// Handle notification/cache logic here
-	return nil
 }

@@ -3,8 +3,9 @@ package usercontroller
 import (
 	userpb "github.com/Noname2812/go-ecommerce-backend-api/internal/common/protogen/user"
 	"github.com/Noname2812/go-ecommerce-backend-api/internal/initialize"
-	userservice "github.com/Noname2812/go-ecommerce-backend-api/internal/services/user/application/service"
-	"github.com/Noname2812/go-ecommerce-backend-api/pkg/grpcserver"
+	userwire "github.com/Noname2812/go-ecommerce-backend-api/internal/services/user/wire"
+	grpcserver "github.com/Noname2812/go-ecommerce-backend-api/pkg/grpc"
+
 	"google.golang.org/grpc"
 )
 
@@ -12,7 +13,7 @@ import (
 func InitUserGrpcServer(appContainer *initialize.AppContainer, addr string) *grpcserver.GRPCServer {
 
 	// Register gRPC service
-	userServiceServer := userservice.NewUserServiceServer()
+	userServiceServer := userwire.InitUserServiceServer(appContainer.DB, appContainer.Logger)
 	registerFunc := func(server *grpc.Server) {
 		userpb.RegisterUserServiceServer(server, userServiceServer) // generated proto Register
 	}

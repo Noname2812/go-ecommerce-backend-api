@@ -7,8 +7,9 @@ import (
 )
 
 type UserInfoRepository interface {
-	CreateUserInfo(ctx context.Context, user *model.UserInfo) error
+	CreateUserInfo(ctx context.Context, user *model.UserInfo) (uint64, error)
 	FindUserInfoByID(ctx context.Context, id uint64) (*model.UserInfo, error)
 	UpdateUserInfo(ctx context.Context, user *model.UserInfo) error
 	DeleteUserInfo(ctx context.Context, id uint64) error
+	DeleteForceUserInfo(ctx context.Context, email string) error
 }
