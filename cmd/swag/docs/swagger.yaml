@@ -118,7 +118,7 @@ paths:
             $ref: '#/definitions/response.ErrorResponseData'
       summary: User Registration
       tags:
-      - account management
+      - auth management
   /auth/save-account:
     post:
       consumes:
@@ -144,7 +144,7 @@ paths:
             $ref: '#/definitions/response.ErrorResponseData'
       summary: User Base Registration
       tags:
-      - account management
+      - auth management
   /auth/verify-account:
     post:
       consumes:
@@ -170,7 +170,7 @@ paths:
             $ref: '#/definitions/response.ErrorResponseData'
       summary: Verify OTP
       tags:
-      - account management
+      - auth management
   /user/{id}:
     get:
       consumes:

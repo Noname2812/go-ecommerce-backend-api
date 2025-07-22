@@ -11,9 +11,9 @@ import (
 	"github.com/Noname2812/go-ecommerce-backend-api/internal/common/utils/cache"
 	"github.com/Noname2812/go-ecommerce-backend-api/internal/services/auth/application/command/handler"
 	"github.com/Noname2812/go-ecommerce-backend-api/internal/services/auth/infrastructure/client"
-	"github.com/Noname2812/go-ecommerce-backend-api/internal/services/auth/infrastructure/persistence/userbase"
+	"github.com/Noname2812/go-ecommerce-backend-api/internal/services/auth/infrastructure/messaging"
+	"github.com/Noname2812/go-ecommerce-backend-api/internal/services/auth/infrastructure/persistence"
 	"github.com/Noname2812/go-ecommerce-backend-api/internal/services/auth/infrastructure/service"
-	"github.com/Noname2812/go-ecommerce-backend-api/internal/services/auth/infrastructure/service/messaging"
 	"github.com/Noname2812/go-ecommerce-backend-api/pkg/grpc"
 	"github.com/Noname2812/go-ecommerce-backend-api/pkg/kafka"
 	"github.com/google/wire"
@@ -21,18 +21,19 @@ import (
 	"go.uber.org/zap"
 )
 
-// Injectors from auth.wire.go:
+// Injectors from auth_wire.go:
 
 func InitAuthHttpCommandHandler(db *sql.DB, rdb *redis.Client, logger *zap.Logger, kafkaManager *kafka.Manager, manager *grpcserver.GRPCServerManager) authcommandhandler.AuthCommandHttpHandler {
-	userBaseRepository := userbaserepositoryimpl.NewUserBaseRepository(db)
+	userBaseRepository := authrepositoryimpl.NewUserBaseRepository(db)
 	redisCache := cacheservice.NewRedisCache(rdb)
-	authEventPublisher := authmessagingserviceimpl.NewAuthEventPublisher(kafkaManager, logger)
+	authPublisherHandler := authmessagingimpl.NewAuthPublisher(kafkaManager, logger)
 	userGRPCClient := authclientgrpc.NewUserGRPCClient(manager)
-	authCommandService := authserviceimpl.NewAuthCommandService(logger, userBaseRepository, redisCache, authEventPublisher, db, userGRPCClient)
+	transactionManager := authrepositoryimpl.NewTransactionManager(db)
+	authCommandService := authserviceimpl.NewAuthCommandService(logger, userBaseRepository, redisCache, authPublisherHandler, userGRPCClient, transactionManager)
 	authCommandHttpHandler := authcommandhandler.NewAuthCommandHttpHandler(authCommandService, logger)
 	return authCommandHttpHandler
 }
 
-// auth.wire.go:
+// auth_wire.go:
 
-var authRepositorySet = wire.NewSet(userbaserepositoryimpl.NewUserBaseRepository)
+var authRepositorySet = wire.NewSet(authrepositoryimpl.NewUserBaseRepository, authrepositoryimpl.NewTransactionManager)

@@ -4,31 +4,9 @@ package commonenum
 type Gender int16
 
 const (
-	// Secret indicates an undisclosed or unknown gender.
-	Secret Gender = 0
+	Secret Gender = 0 // Secret: An undisclosed or unknown gender.
 
-	// Male indicates male gender.
-	Male Gender = 1
+	Male Gender = 1 // Male: Male gender.
 
-	// Female indicates female gender.
-	Female Gender = 2
+	Female Gender = 2 // Female: Female gender.
 )
-
-// IsValid checks if the Gender value is valid.
-func (g Gender) IsValid() bool {
-	return g == Secret || g == Male || g == Female
-}
-
-// String converts the Gender value to a string.
-func (g Gender) String() string {
-	switch g {
-	case Secret:
-		return "Secret"
-	case Male:
-		return "Male"
-	case Female:
-		return "Female"
-	default:
-		return "Male"
-	}
-}

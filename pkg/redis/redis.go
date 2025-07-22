@@ -21,6 +21,7 @@ var (
 	redisMutex      sync.Mutex // Mutex lock
 )
 
+// NewRedis creates a new Redis client
 func NewRedis(config setting.RedisSetting, logger *logger.LoggerZap) *redis.Client {
 	var rdb *redis.Client
 	for redisRetryCount = 0; redisRetryCount <= maxRetries; redisRetryCount++ {

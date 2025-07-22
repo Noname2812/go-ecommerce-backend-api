@@ -1,21 +1,22 @@
 package userqueryhandler
 
 import (
-	"database/sql"
 	"strconv"
 
-	userqueryresponse "github.com/Noname2812/go-ecommerce-backend-api/internal/services/user/application/query/dto"
+	userqueryresponsedto "github.com/Noname2812/go-ecommerce-backend-api/internal/services/user/application/query/dto/response"
 	userservice "github.com/Noname2812/go-ecommerce-backend-api/internal/services/user/application/service"
 	"github.com/Noname2812/go-ecommerce-backend-api/pkg/response"
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
 
 type userQueryHttpHandler struct {
 	service userservice.UserQueryService
+	logger  *zap.Logger
 }
 
-func NewUserQueryHandler(service userservice.UserQueryService) UserQueryHandler {
-	return &userQueryHttpHandler{service: service}
+func NewUserQueryHandler(service userservice.UserQueryService, logger *zap.Logger) UserQueryHandler {
+	return &userQueryHttpHandler{service: service, logger: logger}
 }
 
 // GetUserDetails
@@ -32,19 +33,22 @@ func (ah *userQueryHttpHandler) GetUserDetails(ctx *gin.Context) {
 	idStr := ctx.Param("id")
 	userID, err := strconv.ParseUint(idStr, 10, 64)
 	if err != nil {
-		response.ErrorResponse(ctx, response.ErrCodeParamInvalid, err.Error())
+		response.ErrorResponse(ctx, response.ErrCodeParamInvalid, err.Error(), nil)
 		return
 	}
-	user, error := ah.service.GetUserProfile(ctx.Request.Context(), userID)
-	if error != nil {
-		if error == sql.ErrNoRows {
-			response.ErrorResponse(ctx, response.ErrCodeUserNotFound, "User not found")
-			return
-		}
-		response.ErrorResponse(ctx, response.ErrCodeParamInvalid, error.Error())
+	user, err := ah.service.GetUserProfile(ctx.Request.Context(), userID)
+	if err != nil {
+		ah.logger.Error("User registration failed",
+			zap.String("trace_id", ctx.GetString("trace_id")),
+			zap.Error(err),
+		)
+		response.ErrorResponse(ctx, response.ErrServerError, err.Error(), nil)
 		return
 	}
-
-	result := userqueryresponse.ToUserInfoResponse(*user)
+	if user == nil {
+		response.ErrorResponse(ctx, response.ErrCodeUserNotFound, "user not found", nil)
+		return
+	}
+	result := userqueryresponsedto.ToUserInfoResponse(*user)
 	response.SuccessResponse(ctx, response.ErrCodeSuccess, result)
 }

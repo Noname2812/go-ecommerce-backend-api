@@ -19,9 +19,9 @@ type GRPCClient struct {
 
 // ClientConfig contains configuration for gRPC client
 type ClientConfig struct {
-	Addr               string
-	MaxRetryAttempts   int
-	ConnectionTimeout  time.Duration
+	Addr              string
+	MaxRetryAttempts  int
+	ConnectionTimeout time.Duration
 	KeepAlive         time.Duration
 	KeepAliveTimeout  time.Duration
 }
@@ -29,10 +29,10 @@ type ClientConfig struct {
 // DefaultClientConfig returns default configuration for gRPC client
 func DefaultClientConfig(addr string) *ClientConfig {
 	return &ClientConfig{
-		Addr:               addr,
-		MaxRetryAttempts:   3,
-		ConnectionTimeout:  10 * time.Second,
-		KeepAlive:         30 * time.Second,
+		Addr:              addr,
+		MaxRetryAttempts:  3,
+		ConnectionTimeout: 10 * time.Second,
+		KeepAlive:         2 * time.Minute,
 		KeepAliveTimeout:  5 * time.Second,
 	}
 }
@@ -92,7 +92,7 @@ func (c *GRPCClient) IsConnected() bool {
 	if c.conn == nil {
 		return false
 	}
-	
+
 	state := c.conn.GetState()
 	return state == connectivity.Connecting || state == connectivity.Ready
 }

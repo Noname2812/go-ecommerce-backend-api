@@ -18,6 +18,7 @@ const (
 	BACK_OFF_DELAY = 100 * time.Millisecond // Back-off delay between retry attempts
 )
 
+// TopicConfig is the configuration for a Kafka topic
 type TopicConfig struct {
 	Async        bool               // Enable asynchronous sending. If true, messages are sent without waiting for a response.
 	RequiredAcks kafka.RequiredAcks //  0: No response needed (fastest, least safe). 1: Wait for leader broker only. -1 or All: Wait for all in-sync replicas (most reliable).
@@ -26,6 +27,7 @@ type TopicConfig struct {
 	Balancer     kafka.Balancer     // Balancer is used to distribute messages across partitions. (kafka.Hash, kafka.RoundRobin, kafka.LeastBytes).
 }
 
+// Producer is the Kafka producer
 type Producer struct {
 	writers map[string]*kafka.Writer
 	logger  *zap.Logger
@@ -107,6 +109,7 @@ func (p *Producer) SendMessage(ctx context.Context, topic string, key []byte, va
 	return nil
 }
 
+// RegisterTopic registers a new topic with the producer
 func (p *Producer) RegisterTopic(topic string, cfg TopicConfig) {
 	p.mu.Lock()
 	defer p.mu.Unlock()

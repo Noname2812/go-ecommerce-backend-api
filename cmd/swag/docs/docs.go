@@ -34,7 +34,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "account management"
+                    "auth management"
                 ],
                 "summary": "User Registration",
                 "parameters": [
@@ -74,7 +74,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "account management"
+                    "auth management"
                 ],
                 "summary": "User Base Registration",
                 "parameters": [
@@ -114,7 +114,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "account management"
+                    "auth management"
                 ],
                 "summary": "Verify OTP",
                 "parameters": [

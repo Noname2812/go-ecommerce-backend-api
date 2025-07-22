@@ -28,7 +28,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "account management"
+                    "auth management"
                 ],
                 "summary": "User Registration",
                 "parameters": [
@@ -68,7 +68,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "account management"
+                    "auth management"
                 ],
                 "summary": "User Base Registration",
                 "parameters": [
@@ -108,7 +108,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "account management"
+                    "auth management"
                 ],
                 "summary": "Verify OTP",
                 "parameters": [

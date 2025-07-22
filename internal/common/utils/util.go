@@ -3,12 +3,10 @@ package utils
 import (
 	"database/sql"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
-	"time"
-
-	enum "github.com/Noname2812/go-ecommerce-backend-api/internal/common/enum"
-	vo "github.com/Noname2812/go-ecommerce-backend-api/internal/common/vo"
 
 	"github.com/google/uuid"
 )
@@ -25,39 +23,26 @@ func GenerateCliTokenUUID(userId int) string {
 	return strconv.Itoa(userId) + "clitoken" + uuidString
 }
 
-func NullStringToPtr(ns sql.NullString) *string {
-	if ns.Valid {
-		return &ns.String
+func NullInt64ToUint64Ptr(n sql.NullInt64) *uint64 {
+	if !n.Valid {
+		return nil
 	}
-	return nil
+	u := uint64(n.Int64)
+	return &u
 }
 
-func NullTimeToPtr(nt sql.NullTime) *time.Time {
-	if nt.Valid {
-		return &nt.Time
-	}
-	return nil
-}
-
-func NullInt16ToGender(n sql.NullInt16) enum.Gender {
-	if n.Valid {
-		return enum.Gender(n.Int16)
-	}
-	return enum.Secret
-}
-
-func PhoneFromNullString(ns sql.NullString) *vo.Phone {
+func NullStringToStringPtr(ns sql.NullString) *string {
 	if !ns.Valid {
 		return nil
 	}
-	phone, _ := vo.NewPhone(ns.String)
-	return phone
+	return &ns.String
 }
 
-func Uint8ToAuthState(val uint8) enum.AuthenticationState {
-	return enum.AuthenticationState(val)
-}
-
-func Uint8ToUserState(val uint8) enum.UserState {
-	return enum.UserState(val)
+func LoadLuaScript(name string) (string, error) {
+	path := filepath.Join("scripts", "lua", name)
+	content, err := os.ReadFile(path)
+	if err != nil {
+		return "", fmt.Errorf("failed to read Lua script: %w", err)
+	}
+	return string(content), nil
 }

@@ -14,7 +14,7 @@ import (
 	"github.com/Noname2812/go-ecommerce-backend-api/internal/services/user/application/query/handler"
 	"github.com/Noname2812/go-ecommerce-backend-api/internal/services/user/infrastructure/grpc"
 	"github.com/Noname2812/go-ecommerce-backend-api/internal/services/user/infrastructure/messaging"
-	"github.com/Noname2812/go-ecommerce-backend-api/internal/services/user/infrastructure/persistence/userinfo"
+	"github.com/Noname2812/go-ecommerce-backend-api/internal/services/user/infrastructure/persistence"
 	"github.com/Noname2812/go-ecommerce-backend-api/internal/services/user/infrastructure/service"
 	"github.com/Noname2812/go-ecommerce-backend-api/pkg/kafka"
 	"github.com/google/wire"
@@ -22,37 +22,37 @@ import (
 	"go.uber.org/zap"
 )
 
-// Injectors from user.wire.go:
+// Injectors from user_wire.go:
 
 func InitUserQueryHandler(db *sql.DB, logger *zap.Logger) userqueryhandler.UserQueryHandler {
-	userInfoRepository := userinforepositoryimpl.NewUserInfoRepository(db)
+	userInfoRepository := userrepositoryimpl.NewUserInfoRepository(db)
 	userQueryService := userserviceimpl.NewUserQueryService(userInfoRepository)
-	userQueryHandler := userqueryhandler.NewUserQueryHandler(userQueryService)
+	userQueryHandler := userqueryhandler.NewUserQueryHandler(userQueryService, logger)
 	return userQueryHandler
 }
 
 func InitUserCommandHandler(db *sql.DB, logger *zap.Logger, manager *kafka.Manager, redisClient *redis.Client) usercommandhandler.UserCommandHandler {
-	userPublisherHandler := useremessagingimpl.NewUserEventPublisher(manager, logger)
-	userInfoRepository := userinforepositoryimpl.NewUserInfoRepository(db)
-	userCommandService := userserviceimpl.NewUserCommandService(userPublisherHandler, userInfoRepository, redisClient)
+	userPublisher := useremessagingimpl.NewUserPublisher(manager, logger)
+	userInfoRepository := userrepositoryimpl.NewUserInfoRepository(db)
+	userCommandService := userserviceimpl.NewUserCommandService(userPublisher, userInfoRepository, redisClient)
 	userCommandHandler := usercommandhandler.NewUserCommandHandler(logger, userCommandService)
 	return userCommandHandler
 }
 
 func InitUserServiceServer(db *sql.DB, logger *zap.Logger) user.UserServiceServer {
-	userInfoRepository := userinforepositoryimpl.NewUserInfoRepository(db)
+	userInfoRepository := userrepositoryimpl.NewUserInfoRepository(db)
 	userServiceServer := userserviceserver.NewUserServiceServer(userInfoRepository)
 	return userServiceServer
 }
 
-func InitUserConsumer(db *sql.DB, logger *zap.Logger, manager *kafka.Manager, redisClient *redis.Client) usermessaging.UserConsumerHandler {
-	userPublisherHandler := useremessagingimpl.NewUserEventPublisher(manager, logger)
-	userInfoRepository := userinforepositoryimpl.NewUserInfoRepository(db)
-	userCommandService := userserviceimpl.NewUserCommandService(userPublisherHandler, userInfoRepository, redisClient)
-	userConsumerHandler := useremessagingimpl.NewUserConsumer(manager, logger, userCommandService)
-	return userConsumerHandler
+func InitUserConsumer(db *sql.DB, logger *zap.Logger, manager *kafka.Manager, redisClient *redis.Client) usermessaging.UserConsumer {
+	userPublisher := useremessagingimpl.NewUserPublisher(manager, logger)
+	userInfoRepository := userrepositoryimpl.NewUserInfoRepository(db)
+	userCommandService := userserviceimpl.NewUserCommandService(userPublisher, userInfoRepository, redisClient)
+	userConsumer := useremessagingimpl.NewUserConsumer(manager, logger, userCommandService)
+	return userConsumer
 }
 
-// user.wire.go:
+// user_wire.go:
 
-var UserRepositorySet = wire.NewSet(userinforepositoryimpl.NewUserInfoRepository)
+var UserRepositorySet = wire.NewSet(userrepositoryimpl.NewUserInfoRepository)

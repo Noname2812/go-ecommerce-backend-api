@@ -8,13 +8,16 @@ const (
 	ErrCodeParamInvalid = 20002 // param is invalid
 	ErrServerError      = 20003 // server error
 
-	// Email
-	ErrCodeEmailInvalid        = 20010 // Email is invalid
-	ErrCodeEmailExistsUserBase = 20011 // Email is exists
+	// Param
+	ErrCodeEmailInvalid        = 20100 // Email is invalid
+	ErrCodeEmailExistsUserBase = 20101 // Email is exists
 
+	// Token
 	ErrInvalidToken = 30001 // token is invalid
-	ErrInvalidOTP   = 30002
-	ErrSendEmailOtp = 30003
+
+	// OTP
+	ErrInvalidOTP   = 30100 // Otp error
+	ErrSendEmailOtp = 30101 // Failed to send email OTP
 
 	// User Authentication
 	ErrCodeAuthFailed  = 40005

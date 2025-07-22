@@ -16,22 +16,3 @@ const (
 	// Failed indicates the user authentication has failed.
 	Failed AuthenticationState = 3
 )
-
-// IsValid checks if the AuthenticationState value is valid.
-func (a AuthenticationState) IsValid() bool {
-	return a == NotAuthenticated || a == Pending || a == Authenticated || a == Failed
-}
-
-// String converts the AuthenticationState value to a string.
-func (a AuthenticationState) String() string {
-	switch a {
-	case NotAuthenticated:
-		return "Not Authenticated"
-	case Pending:
-		return "Pending"
-	case Authenticated:
-		return "Authenticated"
-	default:
-		return "Failed"
-	}
-}

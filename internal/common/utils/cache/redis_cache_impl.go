@@ -17,6 +17,65 @@ type sRedisCache struct {
 	locker *redislock.Client
 }
 
+// Eval implements RedisCache.
+// Run a Lua script in Redis for atomic operations
+func (s *sRedisCache) Eval(ctx context.Context, script string, keys []string, args ...interface{}) (interface{}, error) {
+	result, err := s.client.Eval(ctx, script, keys, args...).Result()
+	if err != nil {
+		return nil, fmt.Errorf("redis eval error: %w", err)
+	}
+	return result, nil
+}
+
+// HDel implements RedisCache.
+// Delete a field in a hash
+func (s *sRedisCache) HDel(ctx context.Context, key string, field string) error {
+	if err := s.client.HDel(ctx, key, field).Err(); err != nil {
+		return fmt.Errorf("redis hdel error: %w", err)
+	}
+	return nil
+}
+
+// HGetAll implements RedisCache.
+// Get all fields in a hash
+func (s *sRedisCache) HGetAll(ctx context.Context, key string) (map[string]string, error) {
+	result, err := s.client.HGetAll(ctx, key).Result()
+	if err != nil {
+		if errors.Is(err, redis.Nil) {
+			return map[string]string{}, nil // return empty map if not exist
+		}
+		return nil, fmt.Errorf("redis hgetall error: %w", err)
+	}
+	return result, nil
+}
+
+// HSet implements RedisCache.
+// Set a field in a hash
+func (s *sRedisCache) HSet(ctx context.Context, key string, field string, value interface{}) error {
+	val, err := json.Marshal(value)
+	if err != nil {
+		return fmt.Errorf("json marshal error: %w", err)
+	}
+	if err := s.client.HSet(ctx, key, field, val).Err(); err != nil {
+		return fmt.Errorf("redis hset error: %w", err)
+	}
+	return nil
+}
+
+// HSetNX implements RedisCache.
+// Set a field in a hash only if it does not exist
+func (s *sRedisCache) HSetNX(ctx context.Context, key string, field string, value interface{}) (bool, error) {
+	val, err := json.Marshal(value)
+	if err != nil {
+		return false, fmt.Errorf("json marshal error: %w", err)
+	}
+	success, err := s.client.HSetNX(ctx, key, field, val).Result()
+	if err != nil {
+		return false, fmt.Errorf("redis hsetnx error: %w", err)
+	}
+	return success, nil
+}
+
 // Expire implements RedisCache.
 func (s *sRedisCache) Expire(ctx context.Context, key string, expiration time.Duration) error {
 	if err := s.client.Expire(ctx, key, expiration).Err(); err != nil {

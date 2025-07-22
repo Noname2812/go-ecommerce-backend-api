@@ -16,7 +16,7 @@ type authCommandHandler struct {
 // User Base Registration
 // @Summary      User Base Registration
 // @Description  When user has registered send otp to email
-// @Tags         account management
+// @Tags         auth management
 // @Accept       json
 // @Produce      json
 // @Param        payload body authcommandrequest.SaveAccountRequest true "payload"
@@ -25,19 +25,19 @@ type authCommandHandler struct {
 // @Router       /auth/save-account [post]
 func (a *authCommandHandler) SaveAccount(ctx *gin.Context) {
 
-	// check token
 	var body authcommandrequest.SaveAccountRequest
 
 	// Parse JSON payload
 	if err := ctx.ShouldBindJSON(&body); err != nil {
-		a.logger.Warn("Invalid registration payload",
-			zap.String("trace_id", ctx.GetString("trace_id")),
-			zap.Error(err),
-		)
-		response.ErrorResponse(ctx, response.ErrCodeParamInvalid, err.Error())
+		ctx.Error(err).SetType(gin.ErrorTypeBind)
 		return
 	}
 
+	// Validate payload
+	if err := body.Validate(); err != nil {
+		response.ErrorResponse(ctx, response.ErrCodeParamInvalid, "", err)
+		return
+	}
 	code, err := a.acs.SaveAccount(ctx.Request.Context(), &body)
 	if err != nil {
 		a.logger.Error("User registration failed",
@@ -46,7 +46,7 @@ func (a *authCommandHandler) SaveAccount(ctx *gin.Context) {
 			zap.Int("err_code", code),
 			zap.Error(err),
 		)
-		response.ErrorResponse(ctx, code, err.Error())
+		response.ErrorResponse(ctx, code, err.Error(), nil)
 		return
 	}
 	response.SuccessResponse(ctx, code, nil)
@@ -55,7 +55,7 @@ func (a *authCommandHandler) SaveAccount(ctx *gin.Context) {
 // User Verification OTP documentation
 // @Summary      Verify OTP
 // @Description  When user is verified otp from email
-// @Tags         account management
+// @Tags         auth management
 // @Accept       json
 // @Produce      json
 // @Param        payload body authcommandrequest.VerifyOTPRequest true "payload"
@@ -67,11 +67,13 @@ func (a *authCommandHandler) VerifyOTP(ctx *gin.Context) {
 
 	// Parse JSON payload
 	if err := ctx.ShouldBindJSON(&body); err != nil {
-		a.logger.Warn("Invalid registration payload",
-			zap.String("trace_id", ctx.GetString("trace_id")),
-			zap.Error(err),
-		)
-		response.ErrorResponse(ctx, response.ErrCodeParamInvalid, "Email is invalid")
+		ctx.Error(err).SetType(gin.ErrorTypeBind)
+		return
+	}
+
+	// Validate payload
+	if err := body.Validate(); err != nil {
+		response.ErrorResponse(ctx, response.ErrCodeParamInvalid, "", err)
 		return
 	}
 
@@ -83,7 +85,7 @@ func (a *authCommandHandler) VerifyOTP(ctx *gin.Context) {
 			zap.Int("err_code", code),
 			zap.Error(err),
 		)
-		response.ErrorResponse(ctx, code, err.Error())
+		response.ErrorResponse(ctx, code, err.Error(), nil)
 		return
 	}
 	response.SuccessResponse(ctx, code, data)
@@ -92,7 +94,7 @@ func (a *authCommandHandler) VerifyOTP(ctx *gin.Context) {
 // User Registration documentation
 // @Summary      User Registration
 // @Description  When user is registered send otp to email
-// @Tags         account management
+// @Tags         auth management
 // @Accept       json
 // @Produce      json
 // @Param        payload body authcommandrequest.UserRegistratorRequest true "payload"
@@ -105,11 +107,13 @@ func (a *authCommandHandler) Register(ctx *gin.Context) {
 
 	// Parse JSON payload
 	if err := ctx.ShouldBindJSON(&body); err != nil {
-		a.logger.Warn("Invalid registration payload",
-			zap.String("trace_id", traceID),
-			zap.Error(err),
-		)
-		response.ErrorResponse(ctx, response.ErrCodeParamInvalid, "Email is invalid")
+		ctx.Error(err).SetType(gin.ErrorTypeBind)
+		return
+	}
+
+	// Validate payload
+	if err := body.Validate(); err != nil {
+		response.ErrorResponse(ctx, response.ErrCodeParamInvalid, "", err)
 		return
 	}
 
@@ -122,7 +126,7 @@ func (a *authCommandHandler) Register(ctx *gin.Context) {
 			zap.Int("err_code", code),
 			zap.Error(err),
 		)
-		response.ErrorResponse(ctx, code, err.Error())
+		response.ErrorResponse(ctx, code, err.Error(), nil)
 		return
 	}
 	response.SuccessResponse(ctx, code, nil)

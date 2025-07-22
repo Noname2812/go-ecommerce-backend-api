@@ -3,7 +3,7 @@ package initialize
 import (
 	"context"
 
-	authmessagingserviceimpl "github.com/Noname2812/go-ecommerce-backend-api/internal/services/auth/infrastructure/service/messaging"
+	authmessagingimpl "github.com/Noname2812/go-ecommerce-backend-api/internal/services/auth/infrastructure/messaging"
 	notificationwire "github.com/Noname2812/go-ecommerce-backend-api/internal/services/notification/wire"
 	userwire "github.com/Noname2812/go-ecommerce-backend-api/internal/services/user/wire"
 	"github.com/Noname2812/go-ecommerce-backend-api/pkg/setting"
@@ -14,7 +14,7 @@ func InitKafka(ctx context.Context, config *setting.Config, container *AppContai
 	// ---------------- Producers ---------------- //
 
 	// auth
-	authPublisher := authmessagingserviceimpl.NewAuthEventPublisher(container.KafkaManager, container.Logger)
+	authPublisher := authmessagingimpl.NewAuthPublisher(container.KafkaManager, container.Logger)
 	authPublisher.Register()
 
 	// ---------------- Consumers ---------------- //

@@ -2,7 +2,6 @@ package notificationmessagingimpl
 
 import (
 	"context"
-	"encoding/json"
 
 	commonkafka "github.com/Noname2812/go-ecommerce-backend-api/internal/common/kafka"
 	notificationmessaging "github.com/Noname2812/go-ecommerce-backend-api/internal/services/notification/application/messaging"
@@ -31,13 +30,13 @@ func (c *notificationConsumer) HandleOtpVerifyUserRegisterCreatedEvent(ctx conte
 				zap.Stack("stacktrace"))
 		}
 	}()
-	var event notificationmessagingevent.OtpCreatedEvent
-	if err := json.Unmarshal(value, &event); err != nil {
+	event, err := notificationmessagingevent.UnmarshalOtpCreatedEvent(value)
+	if err != nil {
 		c.logger.Error("Failed to unmarshal OTP event", zap.Error(err))
 		return err
 	}
 
-	err := c.emailService.SendRegisterOTP(event.Email, event.Value)
+	err = c.emailService.SendRegisterOTP(event.Email, event.Value)
 	if err != nil {
 		c.logger.Error("Failed to send OTP notification", zap.Error(err))
 		return err
