@@ -18,11 +18,11 @@ func (r *GetListTripsRequest) Validate() map[string]string {
 	// Validate departure_date format
 	departureDate, err := time.Parse("2006-01-02", r.DepartureDate)
 	if err != nil {
-		errors["departure_date"] = "must be in format YYYY-MM-DD"
+		errors["departure_date"] = "Departure date must be in format YYYY-MM-DD"
 	} else {
 		today := time.Now().Truncate(24 * time.Hour)
 		if departureDate.Before(today) {
-			errors["departure_date"] = "must not be before today"
+			errors["departure_date"] = "Departure date must not be before today"
 		}
 	}
 	if len(errors) > 0 {
