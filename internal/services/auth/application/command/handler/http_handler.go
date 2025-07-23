@@ -1,6 +1,8 @@
 package authcommandhandler
 
 import (
+	"encoding/json"
+
 	authcommandrequest "github.com/Noname2812/go-ecommerce-backend-api/internal/services/auth/application/command/dto/request"
 	authservice "github.com/Noname2812/go-ecommerce-backend-api/internal/services/auth/application/service"
 	"github.com/Noname2812/go-ecommerce-backend-api/pkg/response"
@@ -28,13 +30,13 @@ func (a *authCommandHandler) SaveAccount(ctx *gin.Context) {
 	var body authcommandrequest.SaveAccountRequest
 
 	// Parse JSON payload
-	if err := ctx.ShouldBindJSON(&body); err != nil {
-		ctx.Error(err).SetType(gin.ErrorTypeBind)
+	if err := json.NewDecoder(ctx.Request.Body).Decode(&body); err != nil {
+		response.ErrorResponse(ctx, response.ErrCodeInvalidJson, err.Error(), map[string]string{"error": err.Error()})
 		return
 	}
 
 	// Validate payload
-	if err := body.Validate(); err != nil {
+	if err := body.Validate(ctx); err != nil {
 		response.ErrorResponse(ctx, response.ErrCodeParamInvalid, "", err)
 		return
 	}
@@ -72,7 +74,7 @@ func (a *authCommandHandler) VerifyOTP(ctx *gin.Context) {
 	}
 
 	// Validate payload
-	if err := body.Validate(); err != nil {
+	if err := body.Validate(ctx); err != nil {
 		response.ErrorResponse(ctx, response.ErrCodeParamInvalid, "", err)
 		return
 	}
@@ -106,13 +108,13 @@ func (a *authCommandHandler) Register(ctx *gin.Context) {
 	var body authcommandrequest.UserRegistratorRequest
 
 	// Parse JSON payload
-	if err := ctx.ShouldBindJSON(&body); err != nil {
-		ctx.Error(err).SetType(gin.ErrorTypeBind)
+	if err := json.NewDecoder(ctx.Request.Body).Decode(&body); err != nil {
+		response.ErrorResponse(ctx, response.ErrCodeInvalidJson, err.Error(), map[string]string{"error": err.Error()})
 		return
 	}
 
 	// Validate payload
-	if err := body.Validate(); err != nil {
+	if err := body.Validate(ctx); err != nil {
 		response.ErrorResponse(ctx, response.ErrCodeParamInvalid, "", err)
 		return
 	}

@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 )
 
@@ -45,4 +46,34 @@ func LoadLuaScript(name string) (string, error) {
 		return "", fmt.Errorf("failed to read Lua script: %w", err)
 	}
 	return string(content), nil
+}
+
+func ValidateStructWithValidatorTags(validate *validator.Validate, req interface{}) map[string]string {
+	errors := make(map[string]string)
+
+	if err := validate.Struct(req); err != nil {
+		validationErrors := err.(validator.ValidationErrors)
+		for _, fieldError := range validationErrors {
+			fieldName := strings.ToLower(fieldError.Field())
+			switch fieldError.Tag() {
+			case "required":
+				errors[fieldName] = fmt.Sprintf("%s is required", fieldError.Field())
+			case "email":
+				errors[fieldName] = "Email is not valid"
+			case "e164":
+				errors[fieldName] = "Phone number is not valid"
+			case "eqfield":
+				errors[fieldName] = "Password and confirm password do not match"
+			case "min":
+				errors[fieldName] = fmt.Sprintf("%s must be at least %s characters long", fieldError.Field(), fieldError.Param())
+			case "oneof":
+				errors[fieldName] = fmt.Sprintf("%s must be one of %s", fieldError.Field(), fieldError.Param())
+			case "datetime":
+				errors[fieldName] = "Invalid date format"
+			default:
+				errors[fieldName] = fmt.Sprintf("%s is not valid", fieldError.Field())
+			}
+		}
+	}
+	return errors
 }

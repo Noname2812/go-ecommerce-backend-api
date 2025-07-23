@@ -195,19 +195,19 @@ const docTemplate = `{
             ],
             "properties": {
                 "birthday": {
-                    "description": "Ngày sinh (optional), định dạng yyyy-mm-dd",
+                    "description": "birthday",
                     "type": "string"
                 },
                 "confirm_pass": {
-                    "description": "Xác nhận password phải giống Password",
+                    "description": "confirm password",
                     "type": "string"
                 },
                 "email": {
-                    "description": "Email bắt buộc và phải đúng định dạng",
+                    "description": "email",
                     "type": "string"
                 },
                 "gender": {
-                    "description": "Giới tính: 0=male, 1=female, 2=other",
+                    "description": "gender",
                     "type": "integer",
                     "enum": [
                         0,
@@ -216,20 +216,20 @@ const docTemplate = `{
                     ]
                 },
                 "name": {
-                    "description": "Tên người dùng",
+                    "description": "name",
                     "type": "string"
                 },
                 "password": {
-                    "description": "Password tối thiểu 8 ký tự",
+                    "description": "password",
                     "type": "string",
                     "minLength": 8
                 },
                 "phone": {
-                    "description": "Số điện thoại (optional, theo chuẩn E.164)",
+                    "description": "phone",
                     "type": "string"
                 },
                 "token": {
-                    "description": "token đăng kí thông tin người dùng",
+                    "description": "token",
                     "type": "string"
                 }
             }
@@ -242,11 +242,17 @@ const docTemplate = `{
             ],
             "properties": {
                 "email": {
+                    "description": "email",
                     "type": "string"
                 },
                 "purpose": {
-                    "description": "TEST_USER, CUSTOMER, ADMIN, etc.",
-                    "type": "string"
+                    "description": "purpose (TEST_USER, CUSTOMER, ADMIN, etc.)",
+                    "type": "string",
+                    "enum": [
+                        "TEST_USER",
+                        "CUSTOMER",
+                        "ADMIN"
+                    ]
                 }
             }
         },
@@ -258,9 +264,11 @@ const docTemplate = `{
             ],
             "properties": {
                 "email": {
+                    "description": "email",
                     "type": "string"
                 },
                 "otp": {
+                    "description": "otp",
                     "type": "string"
                 }
             }
@@ -271,8 +279,13 @@ const docTemplate = `{
                 "code": {
                     "type": "integer"
                 },
-                "detail": {},
-                "error": {
+                "errors": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "message": {
                     "type": "string"
                 },
                 "success": {

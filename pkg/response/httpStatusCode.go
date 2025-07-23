@@ -6,7 +6,8 @@ const (
 	// common
 	ErrCodeSuccess      = 20001 // Success
 	ErrCodeParamInvalid = 20002 // param is invalid
-	ErrServerError      = 20003 // server error
+	ErrCodeInvalidJson  = 20003 // Invalid JSON payload
+	ErrServerError      = 20004 // server error
 
 	// Param
 	ErrCodeEmailInvalid        = 20100 // Email is invalid
@@ -42,6 +43,7 @@ var msg = map[int]string{
 	ErrCodeSuccess:             "Success",
 	ErrServerError:             "Server error",
 	ErrCodeParamInvalid:        "Param is invalid",
+	ErrCodeInvalidJson:         "Invalid JSON payload",
 	ErrCodeEmailInvalid:        "Email is invalid",
 	ErrCodeEmailExistsUserBase: "Email is exists",
 	ErrInvalidToken:            "token is invalid",
