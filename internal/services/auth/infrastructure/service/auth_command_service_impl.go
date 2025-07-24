@@ -2,7 +2,6 @@ package authserviceimpl
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -48,22 +47,18 @@ func (a *authCommandService) SaveAccount(ctx context.Context, input *authcommand
 		return response.ErrCodeEmailExistsUserBase, fmt.Errorf("email already exists")
 	}
 	// 2. check token
-	raw, err := a.redisCacheService.Get(ctx, fmt.Sprintf(authconsts.TOKEN_UPDATE_INFO_KEY, hashKey))
+	token, err := a.redisCacheService.Get(ctx, fmt.Sprintf(authconsts.TOKEN_UPDATE_INFO_KEY, hashKey))
 	if err != nil {
 		return response.ErrServerError, err
 	}
-	var token string
-	if err := json.Unmarshal([]byte(raw), &token); err != nil {
-		return response.ErrServerError, err
-	}
+
 	if token != input.Token {
 		return response.ErrInvalidToken, fmt.Errorf("invalid token")
 	}
 
 	email, err := commonvo.NewEmail(input.Email)
 	if err != nil {
-		a.logger.Warn("Email is invalid", zap.String("email", email.String()), zap.Error(err))
-		return response.ErrCodeEmailInvalid, err
+		return response.ErrCodeEmailInvalid, fmt.Errorf("email is invalid")
 	}
 
 	err = a.transactionManager.WithTransaction(ctx, func(txCtx context.Context) error {
@@ -96,7 +91,7 @@ func (a *authCommandService) SaveAccount(ctx context.Context, input *authcommand
 		// 5. send event user base inserted fail
 		event := &authdomainevent.UserBaseInsertedFail{Email: email.String(), Success: false}
 		_ = a.authEventPublisher.PublishUserBaseInsertedFail(ctx, event)
-		return response.ErrServerError, err
+		return response.ErrServerError, fmt.Errorf("save account failed")
 	}
 	return response.ErrCodeSuccess, nil
 }
@@ -108,31 +103,31 @@ func (a *authCommandService) VerifyOTP(ctx context.Context, input *authcommandre
 	// 1. Check if user is blocked
 	isBlocked, err := a.redisCacheService.Exists(ctx, fmt.Sprintf(authconsts.EMAIL_BLOCKED_KEY, hashKey))
 	if err != nil {
-		return response.ErrServerError, nil, err
+		return response.ErrServerError, nil, fmt.Errorf("check user blocked failed")
 	}
 	if isBlocked {
-		return response.ErrCodeUserBlocked, nil, fmt.Errorf("user is temporarily blocked")
+		return response.ErrCodeUserBlocked, nil, fmt.Errorf("user is blocked")
 	}
 
 	// 2. check OTP in cache
 	otpCache, err := a.redisCacheService.Get(ctx, fmt.Sprintf(authconsts.OTP_KEY, hashKey))
 	if err != nil {
-		return response.ErrServerError, nil, err
+		return response.ErrServerError, nil, fmt.Errorf("get OTP from cache failed")
 	}
 
 	if otpCache != input.OTP {
 		countVerifyOTPFailed, err := a.redisCacheService.Get(ctx, fmt.Sprintf(authconsts.VERIFY_OTP_FAILED_KEY, hashKey))
 		if err != nil {
-			return response.ErrServerError, nil, err
+			return response.ErrServerError, nil, fmt.Errorf("get count verify OTP failed from cache failed")
 		}
 		if countVerifyOTPFailed == "" {
 			_, err = a.redisCacheService.Incr(ctx, fmt.Sprintf(authconsts.VERIFY_OTP_FAILED_KEY, hashKey))
 			if err != nil {
-				return response.ErrServerError, nil, err
+				return response.ErrServerError, nil, fmt.Errorf("increase count verify OTP failed failed")
 			}
 			err = a.redisCacheService.Expire(ctx, fmt.Sprintf(authconsts.VERIFY_OTP_FAILED_KEY, hashKey), authconsts.VERIFY_OTP_FAILED_TTL)
 			if err != nil {
-				return response.ErrServerError, nil, err
+				return response.ErrServerError, nil, fmt.Errorf("set count verify OTP failed failed")
 			}
 			return response.ErrInvalidToken, nil, fmt.Errorf("invalid OTP")
 		} else {
@@ -142,7 +137,7 @@ func (a *authCommandService) VerifyOTP(ctx context.Context, input *authcommandre
 					// user is blocked
 					err = a.redisCacheService.Set(ctx, fmt.Sprintf(authconsts.EMAIL_BLOCKED_KEY, hashKey), "1", authconsts.EMAIL_BLOCKED_TTL)
 					if err != nil {
-						return response.ErrServerError, nil, err
+						return response.ErrServerError, nil, fmt.Errorf("set user blocked failed")
 					}
 					return response.ErrCodeUserBlocked, nil, fmt.Errorf("user is temporarily blocked")
 				}
@@ -150,7 +145,7 @@ func (a *authCommandService) VerifyOTP(ctx context.Context, input *authcommandre
 				// increase count verify OTP failed
 				_, err = a.redisCacheService.Incr(ctx, fmt.Sprintf(authconsts.VERIFY_OTP_FAILED_KEY, hashKey))
 				if err != nil {
-					return response.ErrServerError, nil, err
+					return response.ErrServerError, nil, fmt.Errorf("increase count verify OTP failed failed")
 				}
 			}
 		}
@@ -161,13 +156,13 @@ func (a *authCommandService) VerifyOTP(ctx context.Context, input *authcommandre
 	token, _ := random.GenarateToken(authconsts.MAX_LENGHT_TOKEN)
 	err = a.redisCacheService.Set(ctx, fmt.Sprintf(authconsts.TOKEN_UPDATE_INFO_KEY, hashKey), token, authconsts.OTP_KEY_TTL)
 	if err != nil {
-		return response.ErrServerError, nil, err
+		return response.ErrServerError, nil, fmt.Errorf("set token failed")
 	}
 
 	// 4. clear otp
 	err = a.redisCacheService.Del(ctx, fmt.Sprintf(authconsts.OTP_KEY, hashKey))
 	if err != nil {
-		return response.ErrServerError, nil, err
+		return response.ErrServerError, nil, fmt.Errorf("clear OTP failed")
 	}
 	// 5. Response token register
 	res = &authcommandresponse.VerifyOTPResponse{
@@ -185,16 +180,16 @@ func (a *authCommandService) Register(ctx context.Context, input *authcommandreq
 	// 1. Check if user is blocked
 	isBlocked, err := a.redisCacheService.Exists(ctx, fmt.Sprintf(authconsts.EMAIL_BLOCKED_KEY, hashKey))
 	if err != nil {
-		return response.ErrServerError, err
+		return response.ErrServerError, fmt.Errorf("check user blocked failed")
 	}
 	if isBlocked {
-		return response.ErrCodeUserBlocked, fmt.Errorf("user is temporarily blocked")
+		return response.ErrCodeUserBlocked, fmt.Errorf("user is blocked")
 	}
 
 	// 2. check user exists in user base
 	userFound, err := a.userBaseRepo.CheckUserBaseExists(ctx, input.Email)
 	if err != nil {
-		return response.ErrServerError, err
+		return response.ErrServerError, fmt.Errorf("check user exists failed")
 	}
 	if userFound {
 		return response.ErrCodeUserHasExists, nil
@@ -208,17 +203,17 @@ func (a *authCommandService) Register(ctx context.Context, input *authcommandreq
 	// 4. save OTP in Redis with expiration time
 	countSend, err := a.redisCacheService.Get(ctx, fmt.Sprintf(authconsts.OTP_COUNT_SEND_KEY, hashKey))
 	if err != nil {
-		return response.ErrServerError, err
+		return response.ErrServerError, fmt.Errorf("get count send OTP failed")
 	}
 	if countSend == "" {
 		// set first time send OTP
 		_, err = a.redisCacheService.Incr(ctx, fmt.Sprintf(authconsts.OTP_COUNT_SEND_KEY, hashKey))
 		if err != nil {
-			return response.ErrServerError, err
+			return response.ErrServerError, fmt.Errorf("increase count send OTP failed")
 		}
 		err = a.redisCacheService.Expire(ctx, fmt.Sprintf(authconsts.OTP_COUNT_SEND_KEY, hashKey), authconsts.OTP_COUNT_SEND_KEY_TTL)
 		if err != nil {
-			return response.ErrServerError, err
+			return response.ErrServerError, fmt.Errorf("set count send OTP failed")
 		}
 	} else {
 		// check count send OTP
@@ -227,27 +222,27 @@ func (a *authCommandService) Register(ctx context.Context, input *authcommandreq
 				// user is blocked
 				err = a.redisCacheService.Set(ctx, fmt.Sprintf(authconsts.EMAIL_BLOCKED_KEY, hashKey), "1", authconsts.EMAIL_BLOCKED_TTL)
 				if err != nil {
-					return response.ErrServerError, err
+					return response.ErrServerError, fmt.Errorf("set user blocked failed")
 				}
-				return response.ErrCodeUserBlocked, fmt.Errorf("user is temporarily blocked")
+				return response.ErrCodeUserBlocked, fmt.Errorf("user is blocked")
 			}
 			// increase count send OTP
 			_, err = a.redisCacheService.Incr(ctx, fmt.Sprintf(authconsts.OTP_COUNT_SEND_KEY, hashKey))
 			if err != nil {
-				return response.ErrServerError, err
+				return response.ErrServerError, fmt.Errorf("increase count send OTP failed")
 			}
 		}
 	}
 
 	err = a.redisCacheService.Set(ctx, fmt.Sprintf(authconsts.OTP_KEY, hashKey), otpNew, authconsts.OTP_KEY_TTL)
 	if err != nil {
-		return response.ErrServerError, err
+		return response.ErrServerError, fmt.Errorf("set OTP failed")
 	}
 
 	// 5. send event created OTP to kafka
 	payload := authdomainevent.NewOtpVerifyRegisterEvent(input.Email, fmt.Sprint(otpNew), time.Duration(consts.TIME_OTP_REGISTER)*time.Minute)
 	if err := a.authEventPublisher.PublishOtpVertifyUserRegisterCreated(ctx, payload); err != nil {
-		return response.ErrServerError, err
+		return response.ErrServerError, fmt.Errorf("send event created OTP to kafka failed")
 	}
 
 	return response.ErrCodeSuccess, nil

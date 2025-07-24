@@ -55,8 +55,8 @@ const docTemplate = `{
                             "$ref": "#/definitions/response.ResponseData"
                         }
                     },
-                    "500": {
-                        "description": "Internal Server Error",
+                    "400": {
+                        "description": "Bad Request",
                         "schema": {
                             "$ref": "#/definitions/response.ErrorResponseData"
                         }
@@ -95,8 +95,8 @@ const docTemplate = `{
                             "$ref": "#/definitions/response.ResponseData"
                         }
                     },
-                    "500": {
-                        "description": "Internal Server Error",
+                    "400": {
+                        "description": "Bad Request",
                         "schema": {
                             "$ref": "#/definitions/response.ErrorResponseData"
                         }
@@ -135,8 +135,8 @@ const docTemplate = `{
                             "$ref": "#/definitions/response.ResponseData"
                         }
                     },
-                    "500": {
-                        "description": "Internal Server Error",
+                    "400": {
+                        "description": "Bad Request",
                         "schema": {
                             "$ref": "#/definitions/response.ErrorResponseData"
                         }
@@ -173,8 +173,8 @@ const docTemplate = `{
                             "$ref": "#/definitions/response.ResponseData"
                         }
                     },
-                    "500": {
-                        "description": "Internal Server Error",
+                    "400": {
+                        "description": "Bad Request",
                         "schema": {
                             "$ref": "#/definitions/response.ErrorResponseData"
                         }
@@ -287,9 +287,6 @@ const docTemplate = `{
                 },
                 "message": {
                     "type": "string"
-                },
-                "success": {
-                    "type": "boolean"
                 }
             }
         },
@@ -302,9 +299,6 @@ const docTemplate = `{
                 "data": {},
                 "message": {
                     "type": "string"
-                },
-                "success": {
-                    "type": "boolean"
                 }
             }
         }

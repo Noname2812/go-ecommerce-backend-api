@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
@@ -76,4 +77,10 @@ func ValidateStructWithValidatorTags(validate *validator.Validate, req interface
 		}
 	}
 	return errors
+}
+
+func DateValidator(fl validator.FieldLevel) bool {
+	dateStr := fl.Field().String()
+	_, err := time.Parse("2006-01-02", dateStr) // yyyy-MM-dd
+	return err == nil
 }

@@ -76,8 +76,6 @@ definitions:
         type: object
       message:
         type: string
-      success:
-        type: boolean
     type: object
   response.ResponseData:
     properties:
@@ -86,8 +84,6 @@ definitions:
       data: {}
       message:
         type: string
-      success:
-        type: boolean
     type: object
 host: localhost:8002
 info:
@@ -122,8 +118,8 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/response.ResponseData'
-        "500":
-          description: Internal Server Error
+        "400":
+          description: Bad Request
           schema:
             $ref: '#/definitions/response.ErrorResponseData'
       summary: User Registration
@@ -148,8 +144,8 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/response.ResponseData'
-        "500":
-          description: Internal Server Error
+        "400":
+          description: Bad Request
           schema:
             $ref: '#/definitions/response.ErrorResponseData'
       summary: User Base Registration
@@ -174,8 +170,8 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/response.ResponseData'
-        "500":
-          description: Internal Server Error
+        "400":
+          description: Bad Request
           schema:
             $ref: '#/definitions/response.ErrorResponseData'
       summary: Verify OTP
@@ -199,8 +195,8 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/response.ResponseData'
-        "500":
-          description: Internal Server Error
+        "400":
+          description: Bad Request
           schema:
             $ref: '#/definitions/response.ErrorResponseData'
       summary: Get user details by ID

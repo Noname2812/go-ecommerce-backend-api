@@ -23,7 +23,7 @@ type authCommandHandler struct {
 // @Produce      json
 // @Param        payload body authcommandrequest.SaveAccountRequest true "payload"
 // @Success      200  {object}  response.ResponseData
-// @Failure      500  {object}  response.ErrorResponseData
+// @Failure      400  {object}  response.ErrorResponseData
 // @Router       /auth/save-account [post]
 func (a *authCommandHandler) SaveAccount(ctx *gin.Context) {
 
@@ -31,7 +31,7 @@ func (a *authCommandHandler) SaveAccount(ctx *gin.Context) {
 
 	// Parse JSON payload
 	if err := json.NewDecoder(ctx.Request.Body).Decode(&body); err != nil {
-		response.ErrorResponse(ctx, response.ErrCodeInvalidJson, err.Error(), map[string]string{"error": err.Error()})
+		response.ErrorResponse(ctx, response.ErrInvalidJson, err.Error(), map[string]string{"error": err.Error()})
 		return
 	}
 
@@ -42,7 +42,7 @@ func (a *authCommandHandler) SaveAccount(ctx *gin.Context) {
 	}
 	code, err := a.acs.SaveAccount(ctx.Request.Context(), &body)
 	if err != nil {
-		a.logger.Error("User registration failed",
+		a.logger.Error("Save account failed",
 			zap.String("trace_id", ctx.GetString("trace_id")),
 			zap.String("email", body.Email),
 			zap.Int("err_code", code),
@@ -62,14 +62,14 @@ func (a *authCommandHandler) SaveAccount(ctx *gin.Context) {
 // @Produce      json
 // @Param        payload body authcommandrequest.VerifyOTPRequest true "payload"
 // @Success      200  {object}  response.ResponseData
-// @Failure      500  {object}  response.ErrorResponseData
+// @Failure      400  {object}  response.ErrorResponseData
 // @Router       /auth/verify-account [post]
 func (a *authCommandHandler) VerifyOTP(ctx *gin.Context) {
 	var body authcommandrequest.VerifyOTPRequest
 
 	// Parse JSON payload
-	if err := ctx.ShouldBindJSON(&body); err != nil {
-		ctx.Error(err).SetType(gin.ErrorTypeBind)
+	if err := json.NewDecoder(ctx.Request.Body).Decode(&body); err != nil {
+		response.ErrorResponse(ctx, response.ErrInvalidJson, err.Error(), map[string]string{"error": err.Error()})
 		return
 	}
 
@@ -81,7 +81,7 @@ func (a *authCommandHandler) VerifyOTP(ctx *gin.Context) {
 
 	code, data, err := a.acs.VerifyOTP(ctx.Request.Context(), &body)
 	if err != nil {
-		a.logger.Error("OTP is invalid",
+		a.logger.Error("Verify OTP failed",
 			zap.String("trace_id", ctx.GetString("trace_id")),
 			zap.String("email", body.Email),
 			zap.Int("err_code", code),
@@ -101,7 +101,7 @@ func (a *authCommandHandler) VerifyOTP(ctx *gin.Context) {
 // @Produce      json
 // @Param        payload body authcommandrequest.UserRegistratorRequest true "payload"
 // @Success      200  {object}  response.ResponseData
-// @Failure      500  {object}  response.ErrorResponseData
+// @Failure      400  {object}  response.ErrorResponseData
 // @Router       /auth/register [post]
 func (a *authCommandHandler) Register(ctx *gin.Context) {
 	traceID := ctx.GetString("trace_id")
@@ -109,7 +109,7 @@ func (a *authCommandHandler) Register(ctx *gin.Context) {
 
 	// Parse JSON payload
 	if err := json.NewDecoder(ctx.Request.Body).Decode(&body); err != nil {
-		response.ErrorResponse(ctx, response.ErrCodeInvalidJson, err.Error(), map[string]string{"error": err.Error()})
+		response.ErrorResponse(ctx, response.ErrInvalidJson, err.Error(), map[string]string{"error": err.Error()})
 		return
 	}
 
@@ -122,7 +122,7 @@ func (a *authCommandHandler) Register(ctx *gin.Context) {
 	// Call service layer
 	code, err := a.acs.Register(ctx.Request.Context(), &body)
 	if err != nil {
-		a.logger.Error("User registration failed",
+		a.logger.Error("Register failed",
 			zap.String("trace_id", traceID),
 			zap.String("email", body.Email),
 			zap.Int("err_code", code),

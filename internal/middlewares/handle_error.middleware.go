@@ -28,10 +28,12 @@ func RecoveryWithLogger(logger *zap.Logger) gin.HandlerFunc {
 				)
 
 				// response error
-				c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+				c.AbortWithStatusJSON(http.StatusOK, gin.H{
 					"success": false,
 					"code":    500,
 					"message": "Internal Server Error",
+					"errors":  map[string]string{"error": "Internal Server Error"},
+					"data":    nil,
 				})
 			}
 		}()

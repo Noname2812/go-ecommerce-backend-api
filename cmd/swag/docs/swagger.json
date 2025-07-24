@@ -49,8 +49,8 @@
                             "$ref": "#/definitions/response.ResponseData"
                         }
                     },
-                    "500": {
-                        "description": "Internal Server Error",
+                    "400": {
+                        "description": "Bad Request",
                         "schema": {
                             "$ref": "#/definitions/response.ErrorResponseData"
                         }
@@ -89,8 +89,8 @@
                             "$ref": "#/definitions/response.ResponseData"
                         }
                     },
-                    "500": {
-                        "description": "Internal Server Error",
+                    "400": {
+                        "description": "Bad Request",
                         "schema": {
                             "$ref": "#/definitions/response.ErrorResponseData"
                         }
@@ -129,8 +129,8 @@
                             "$ref": "#/definitions/response.ResponseData"
                         }
                     },
-                    "500": {
-                        "description": "Internal Server Error",
+                    "400": {
+                        "description": "Bad Request",
                         "schema": {
                             "$ref": "#/definitions/response.ErrorResponseData"
                         }
@@ -167,8 +167,8 @@
                             "$ref": "#/definitions/response.ResponseData"
                         }
                     },
-                    "500": {
-                        "description": "Internal Server Error",
+                    "400": {
+                        "description": "Bad Request",
                         "schema": {
                             "$ref": "#/definitions/response.ErrorResponseData"
                         }
@@ -281,9 +281,6 @@
                 },
                 "message": {
                     "type": "string"
-                },
-                "success": {
-                    "type": "boolean"
                 }
             }
         },
@@ -296,9 +293,6 @@
                 "data": {},
                 "message": {
                     "type": "string"
-                },
-                "success": {
-                    "type": "boolean"
                 }
             }
         }

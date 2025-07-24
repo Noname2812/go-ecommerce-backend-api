@@ -2,6 +2,7 @@ package userserviceimpl
 
 import (
 	"context"
+	"fmt"
 
 	userservice "github.com/Noname2812/go-ecommerce-backend-api/internal/services/user/application/service"
 	usermodel "github.com/Noname2812/go-ecommerce-backend-api/internal/services/user/domain/model"
@@ -16,7 +17,7 @@ type userQueryService struct {
 func (us *userQueryService) GetUserProfile(ctx context.Context, id uint64) (*usermodel.UserInfo, error) {
 	user, err := us.userInfoRepo.FindUserInfoByID(ctx, id)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("find user info by id failed")
 	}
 	return user, nil
 }

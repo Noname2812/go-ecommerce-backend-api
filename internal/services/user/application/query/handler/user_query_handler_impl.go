@@ -27,7 +27,7 @@ func NewUserQueryHandler(service userservice.UserQueryService, logger *zap.Logge
 // @Produce      json
 // @Param        id  path  int  true  "User ID"
 // @Success      200  {object}  response.ResponseData
-// @Failure      500  {object}  response.ErrorResponseData
+// @Failure      400  {object}  response.ErrorResponseData
 // @Router       /user/{id} [get]
 func (ah *userQueryHttpHandler) GetUserDetails(ctx *gin.Context) {
 	idStr := ctx.Param("id")
@@ -38,8 +38,9 @@ func (ah *userQueryHttpHandler) GetUserDetails(ctx *gin.Context) {
 	}
 	user, err := ah.service.GetUserProfile(ctx.Request.Context(), userID)
 	if err != nil {
-		ah.logger.Error("User registration failed",
+		ah.logger.Error("Get user details failed",
 			zap.String("trace_id", ctx.GetString("trace_id")),
+			zap.Uint64("user_id", userID),
 			zap.Error(err),
 		)
 		response.ErrorResponse(ctx, response.ErrServerError, err.Error(), nil)

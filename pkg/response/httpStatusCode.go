@@ -1,71 +1,58 @@
 package response
 
-import "errors"
-
 const (
-	// common
-	ErrCodeSuccess      = 20001 // Success
-	ErrCodeParamInvalid = 20002 // param is invalid
-	ErrCodeInvalidJson  = 20003 // Invalid JSON payload
-	ErrServerError      = 20004 // server error
+	// Success
+	ErrCodeSuccess = 20001 // Success
 
-	// Param
-	ErrCodeEmailInvalid        = 20100 // Email is invalid
-	ErrCodeEmailExistsUserBase = 20101 // Email is exists
+	// Bad Request
+	ErrCodeParamInvalid = 40001 // param is invalid
+	ErrCodeEmailInvalid = 40002 // Email is invalid
+	ErrInvalidToken     = 40003 // token is invalid
+	ErrInvalidJson      = 40004 // invalid json
+	ErrInvalidOTP       = 40005 // Otp error
+	ErrSendEmailOtp     = 40006 // Failed to send email OTP
 
-	// Token
-	ErrInvalidToken = 30001 // token is invalid
+	// Unauthorized
+	ErrCodeAuthFailed = 40100 // Authentication failed
 
-	// OTP
-	ErrInvalidOTP   = 30100 // Otp error
-	ErrSendEmailOtp = 30101 // Failed to send email OTP
+	// Not Found
+	ErrCodeUserNotFound     = 40401 // User not found
+	ErrCodeOtpNotExists     = 40402 // OTP not exists
+	ErrCodeUserOtpNotExists = 40403 // User OTP not exists
 
-	// User Authentication
-	ErrCodeAuthFailed  = 40005
-	ErrCodeUserBlocked = 40000 // User is blocked
-	// Register Code
-	ErrCodeUserHasExists = 50001 // user has already registered
+	// Conflict
+	ErrCodeEmailExistsUserBase = 40900 // Email is exists
+	ErrCodeUserHasExists       = 40901 // User has already registered
 
-	// Err Login
-	ErrCodeOtpNotExists     = 60009
-	ErrCodeUserOtpNotExists = 60008
+	// Forbidden
 
-	// Two Factor Authentication
-	ErrCodeTwoFactorAuthSetupFailed  = 80001
-	ErrCodeTwoFactorAuthVerifyFailed = 80002
+	// Unprocessable Entity
+	ErrCodeTwoFactorAuthSetupFailed  = 42201 // Two Factor Authentication setup failed
+	ErrCodeTwoFactorAuthVerifyFailed = 42202 // Two Factor Authentication verify failed
 
-	// User
-	ErrCodeUserNotFound = 40001 // User not found
+	// Too Many Requests
+	ErrCodeUserBlocked = 42901 // User is blocked
+
+	// Internal Server Error
+	ErrServerError = 50000 // server error
 )
 
 // message
 var msg = map[int]string{
-	ErrCodeSuccess:             "Success",
-	ErrServerError:             "Server error",
-	ErrCodeParamInvalid:        "Param is invalid",
-	ErrCodeInvalidJson:         "Invalid JSON payload",
-	ErrCodeEmailInvalid:        "Email is invalid",
-	ErrCodeEmailExistsUserBase: "Email is exists",
-	ErrInvalidToken:            "token is invalid",
-	ErrInvalidOTP:              "Otp error",
-	ErrSendEmailOtp:            "Failed to send email OTP",
-
-	ErrCodeUserHasExists: "user has already registered",
-
-	ErrCodeOtpNotExists:     "OTP exists but not registered",
-	ErrCodeUserOtpNotExists: "User OTP not exists",
-	ErrCodeAuthFailed:       "Authentication failed",
-	ErrCodeUserBlocked:      "You are blocked by server. Please try again after 60 minutes",
-
-	// Two Factor Authentication
+	ErrCodeSuccess:                   "Success",
+	ErrServerError:                   "Server error",
+	ErrCodeParamInvalid:              "Param is invalid",
+	ErrCodeEmailInvalid:              "Email is invalid",
+	ErrCodeEmailExistsUserBase:       "Email is exists",
+	ErrInvalidToken:                  "token is invalid",
+	ErrInvalidOTP:                    "Otp error",
+	ErrSendEmailOtp:                  "Failed to send email OTP",
+	ErrCodeUserHasExists:             "user has already registered",
+	ErrCodeOtpNotExists:              "OTP exists but not registered",
+	ErrCodeUserOtpNotExists:          "User OTP not exists",
+	ErrCodeAuthFailed:                "Authentication failed",
+	ErrCodeUserBlocked:               "You are blocked by server. Please try again after 60 minutes",
 	ErrCodeTwoFactorAuthSetupFailed:  "Two Factor Authentication setup failed",
 	ErrCodeTwoFactorAuthVerifyFailed: "Two Factor Authentication verify failed",
-
-	// User
-	ErrCodeUserNotFound: "User not found",
+	ErrCodeUserNotFound:              "User not found",
 }
-
-// These are error sentinels
-var (
-	CouldNotGetTicketErr = errors.New("Could not get Ticket from MYSQL") //Type of Internal Error
-)
