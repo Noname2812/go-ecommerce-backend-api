@@ -8,7 +8,7 @@ import (
 // RedisCache is an interface for caching operations
 type RedisCache interface {
 	// Get a value from the cache
-	Get(ctx context.Context, key string) (string, error)
+	Get(ctx context.Context, key string) (string, bool, error)
 	// Set a value in the cache
 	Set(ctx context.Context, key string, value interface{}, expiration time.Duration) error
 	// Delete a value from the cache
@@ -22,7 +22,7 @@ type RedisCache interface {
 	// Set the expiration time for a key
 	Expire(ctx context.Context, key string, expiration time.Duration) error
 	// WithDistributedLock is a helper function to execute a function with a distributed lock
-	WithDistributedLock(ctx context.Context, key string, ttlSeconds int, fn func(ctx context.Context) error) error
+	WithDistributedLock(ctx context.Context, key string, ttl time.Duration, fn func(ctx context.Context) (interface{}, error)) (interface{}, error)
 	// Get all fields in a hash
 	HGetAll(ctx context.Context, key string) (map[string]string, error)
 	// Set a field in a hash

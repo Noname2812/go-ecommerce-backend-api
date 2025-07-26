@@ -11,6 +11,7 @@ var statusCodeMap = map[int]int{
 	400: http.StatusBadRequest,
 	401: http.StatusUnauthorized,
 	404: http.StatusNotFound,
+	408: http.StatusRequestTimeout,
 	409: http.StatusConflict,
 	422: http.StatusUnprocessableEntity,
 	429: http.StatusTooManyRequests,

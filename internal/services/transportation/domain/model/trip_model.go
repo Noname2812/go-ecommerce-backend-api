@@ -16,6 +16,10 @@ type Trip struct {
 	TripCreatedAt     time.Time
 	TripUpdatedAt     time.Time
 	TripDeletedAt     *time.Time
+
+	// Navigation property - lazy loading
+	Route *Route
+	Bus   *Bus
 }
 
 func NewTrip(routeId, busId uint64, departure, arrival time.Time, price decimal.Decimal) *Trip {

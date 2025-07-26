@@ -57,6 +57,86 @@ func (q *Queries) DeleteTrip(ctx context.Context, tripID int64) error {
 	return err
 }
 
+const getListTrips = `-- name: GetListTrips :many
+SELECT trip_id, routes.route_start_location, routes.route_end_location, trips.trip_departure_time, trips.trip_arrival_time, trips.trip_base_price
+FROM trips
+JOIN routes ON trips.route_id = routes.route_id 
+WHERE trips.trip_departure_time >= ? AND routes.route_start_location = ? AND routes.route_end_location = ? AND trips.trip_deleted_at IS NULL
+ORDER BY trips.trip_departure_time ASC
+LIMIT 10 OFFSET ?
+`
+
+type GetListTripsParams struct {
+	TripDepartureTime  time.Time
+	RouteStartLocation string
+	RouteEndLocation   string
+	Offset             int32
+}
+
+type GetListTripsRow struct {
+	TripID             int64
+	RouteStartLocation string
+	RouteEndLocation   string
+	TripDepartureTime  time.Time
+	TripArrivalTime    time.Time
+	TripBasePrice      string
+}
+
+func (q *Queries) GetListTrips(ctx context.Context, arg GetListTripsParams) ([]GetListTripsRow, error) {
+	rows, err := q.db.QueryContext(ctx, getListTrips,
+		arg.TripDepartureTime,
+		arg.RouteStartLocation,
+		arg.RouteEndLocation,
+		arg.Offset,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetListTripsRow
+	for rows.Next() {
+		var i GetListTripsRow
+		if err := rows.Scan(
+			&i.TripID,
+			&i.RouteStartLocation,
+			&i.RouteEndLocation,
+			&i.TripDepartureTime,
+			&i.TripArrivalTime,
+			&i.TripBasePrice,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getListTripsCount = `-- name: GetListTripsCount :one
+SELECT COUNT(trip_id)
+FROM trips
+JOIN routes ON trips.route_id = routes.route_id 
+WHERE trips.trip_departure_time >= ? AND routes.route_start_location = ? AND routes.route_end_location = ? AND trips.trip_deleted_at IS NULL
+`
+
+type GetListTripsCountParams struct {
+	TripDepartureTime  time.Time
+	RouteStartLocation string
+	RouteEndLocation   string
+}
+
+func (q *Queries) GetListTripsCount(ctx context.Context, arg GetListTripsCountParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, getListTripsCount, arg.TripDepartureTime, arg.RouteStartLocation, arg.RouteEndLocation)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const getTripById = `-- name: GetTripById :one
 SELECT trip_id, route_id, bus_id, trip_departure_time, trip_arrival_time, trip_base_price, trip_created_at, trip_updated_at, trip_deleted_at
 FROM ` + "`" + `trips` + "`" + `

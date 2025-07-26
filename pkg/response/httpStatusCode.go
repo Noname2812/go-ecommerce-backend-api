@@ -20,6 +20,9 @@ const (
 	ErrCodeOtpNotExists     = 40402 // OTP not exists
 	ErrCodeUserOtpNotExists = 40403 // User OTP not exists
 
+	// Request Timeout
+	ErrRequestTimeout = 40801 // Request timeout
+
 	// Conflict
 	ErrCodeEmailExistsUserBase = 40900 // Email is exists
 	ErrCodeUserHasExists       = 40901 // User has already registered
@@ -55,4 +58,5 @@ var msg = map[int]string{
 	ErrCodeTwoFactorAuthSetupFailed:  "Two Factor Authentication setup failed",
 	ErrCodeTwoFactorAuthVerifyFailed: "Two Factor Authentication verify failed",
 	ErrCodeUserNotFound:              "User not found",
+	ErrRequestTimeout:                "Request timeout",
 }

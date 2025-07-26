@@ -47,7 +47,7 @@ func (a *authCommandService) SaveAccount(ctx context.Context, input *authcommand
 		return response.ErrCodeEmailExistsUserBase, fmt.Errorf("email already exists")
 	}
 	// 2. check token
-	token, err := a.redisCacheService.Get(ctx, fmt.Sprintf(authconsts.TOKEN_UPDATE_INFO_KEY, hashKey))
+	token, _, err := a.redisCacheService.Get(ctx, fmt.Sprintf(authconsts.TOKEN_UPDATE_INFO_KEY, hashKey))
 	if err != nil {
 		return response.ErrServerError, err
 	}
@@ -110,13 +110,13 @@ func (a *authCommandService) VerifyOTP(ctx context.Context, input *authcommandre
 	}
 
 	// 2. check OTP in cache
-	otpCache, err := a.redisCacheService.Get(ctx, fmt.Sprintf(authconsts.OTP_KEY, hashKey))
+	otpCache, _, err := a.redisCacheService.Get(ctx, fmt.Sprintf(authconsts.OTP_KEY, hashKey))
 	if err != nil {
 		return response.ErrServerError, nil, fmt.Errorf("get OTP from cache failed")
 	}
 
 	if otpCache != input.OTP {
-		countVerifyOTPFailed, err := a.redisCacheService.Get(ctx, fmt.Sprintf(authconsts.VERIFY_OTP_FAILED_KEY, hashKey))
+		countVerifyOTPFailed, _, err := a.redisCacheService.Get(ctx, fmt.Sprintf(authconsts.VERIFY_OTP_FAILED_KEY, hashKey))
 		if err != nil {
 			return response.ErrServerError, nil, fmt.Errorf("get count verify OTP failed from cache failed")
 		}
@@ -201,7 +201,7 @@ func (a *authCommandService) Register(ctx context.Context, input *authcommandreq
 	}
 
 	// 4. save OTP in Redis with expiration time
-	countSend, err := a.redisCacheService.Get(ctx, fmt.Sprintf(authconsts.OTP_COUNT_SEND_KEY, hashKey))
+	countSend, _, err := a.redisCacheService.Get(ctx, fmt.Sprintf(authconsts.OTP_COUNT_SEND_KEY, hashKey))
 	if err != nil {
 		return response.ErrServerError, fmt.Errorf("get count send OTP failed")
 	}

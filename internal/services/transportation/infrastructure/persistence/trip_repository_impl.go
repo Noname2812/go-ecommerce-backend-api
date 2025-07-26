@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"time"
 
 	"github.com/Noname2812/go-ecommerce-backend-api/internal/database"
 	transportationmodel "github.com/Noname2812/go-ecommerce-backend-api/internal/services/transportation/domain/model"
@@ -14,6 +15,45 @@ import (
 type tripRepository struct {
 	sqlc *database.Queries
 	db   *sql.DB
+}
+
+// GetListTripsCount implements transportationrepository.TripRepository.
+func (t *tripRepository) GetListTripsCount(ctx context.Context, departureDate time.Time, fromLocation string, toLocation string) (int, error) {
+	txQueries := t.getTripQueries(ctx)
+	count, err := txQueries.GetListTripsCount(ctx, database.GetListTripsCountParams{
+		TripDepartureTime:  departureDate,
+		RouteStartLocation: fromLocation,
+		RouteEndLocation:   toLocation,
+	})
+	return int(count), err
+}
+
+// GetListTrips implements transportationrepository.TripRepository.
+func (t *tripRepository) GetListTrips(ctx context.Context, departureDate time.Time, fromLocation string, toLocation string, page int) ([]transportationmodel.Trip, error) {
+	txQueries := t.getTripQueries(ctx)
+	trips, err := txQueries.GetListTrips(ctx, database.GetListTripsParams{
+		TripDepartureTime:  departureDate,
+		RouteStartLocation: fromLocation,
+		RouteEndLocation:   toLocation,
+		Offset:             int32((page - 1) * 10),
+	})
+	if err != nil {
+		return nil, err
+	}
+	tripsModel := make([]transportationmodel.Trip, len(trips))
+	for i, trip := range trips {
+		tripsModel[i] = transportationmodel.Trip{
+			TripId:            uint64(trip.TripID),
+			TripDepartureTime: trip.TripDepartureTime,
+			TripArrivalTime:   trip.TripArrivalTime,
+			TripBasePrice:     decimal.RequireFromString(trip.TripBasePrice),
+			Route: &transportationmodel.Route{
+				RouteStartLocation: trip.RouteStartLocation,
+				RouteEndLocation:   trip.RouteEndLocation,
+			},
+		}
+	}
+	return tripsModel, nil
 }
 
 // CreateTrip implements transportationrepository.TripRepository.

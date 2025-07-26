@@ -1,10 +1,13 @@
 package utils
 
 import (
+	"crypto/sha1"
 	"database/sql"
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -83,4 +86,63 @@ func DateValidator(fl validator.FieldLevel) bool {
 	dateStr := fl.Field().String()
 	_, err := time.Parse("2006-01-02", dateStr) // yyyy-MM-dd
 	return err == nil
+}
+
+func StringToDate(dateStr string) (time.Time, error) {
+	return time.Parse("2006-01-02", dateStr)
+}
+
+// GenCacheKeyFromStruct generates a cache key from any struct (e.g. parsed query struct).
+func GenCacheKeyFromStruct(input interface{}, prefix string) string {
+	val := reflect.ValueOf(input)
+	typ := reflect.TypeOf(input)
+
+	if val.Kind() != reflect.Struct {
+		return ""
+	}
+
+	var parts []string
+	for i := 0; i < val.NumField(); i++ {
+		field := typ.Field(i)
+		fieldVal := val.Field(i)
+
+		// Skip field unset or zero value
+		if isZeroValue(fieldVal) {
+			continue
+		}
+
+		// Get field name from `json` tag if exists, fallback to `form` tag, fallback to variable name
+		key := field.Tag.Get("json")
+		if key == "" {
+			key = field.Tag.Get("form")
+		}
+		if key == "" {
+			key = strings.ToLower(field.Name)
+		}
+
+		// Get value as string
+		valStr := fmt.Sprintf("%v", fieldVal.Interface())
+		parts = append(parts, fmt.Sprintf("%s=%s", key, valStr))
+	}
+
+	// Sort to ensure key consistency
+	sort.Strings(parts)
+	rawQuery := strings.Join(parts, "&")
+	hash := sha1.Sum([]byte(rawQuery))
+
+	return fmt.Sprintf("%s:%x", prefix, hash)
+}
+
+// isZeroValue checks if the field has a zero value
+func isZeroValue(v reflect.Value) bool {
+	switch v.Kind() {
+	case reflect.String:
+		return v.Len() == 0
+	case reflect.Int, reflect.Int64, reflect.Uint, reflect.Uint64:
+		return v.Int() == 0
+	case reflect.Bool:
+		return !v.Bool()
+	default:
+		return v.IsZero()
+	}
 }

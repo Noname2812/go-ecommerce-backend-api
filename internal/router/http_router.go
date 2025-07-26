@@ -8,6 +8,7 @@ import (
 	"github.com/Noname2812/go-ecommerce-backend-api/internal/initialize"
 	"github.com/Noname2812/go-ecommerce-backend-api/internal/middlewares"
 	authcontroller "github.com/Noname2812/go-ecommerce-backend-api/internal/services/auth/controller"
+	transportationcontroller "github.com/Noname2812/go-ecommerce-backend-api/internal/services/transportation/controller"
 	usercontroller "github.com/Noname2812/go-ecommerce-backend-api/internal/services/user/controller"
 )
 
@@ -33,6 +34,7 @@ func InitHttpRouter(config *setting.Config, container *initialize.AppContainer) 
 	{
 		usercontroller.InitUserRouter(MainGroup, container)
 		authcontroller.InitAuthRouter(MainGroup, container)
+		transportationcontroller.InitTransportationRouter(MainGroup, container)
 	}
 
 	return r

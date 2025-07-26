@@ -91,16 +91,16 @@ func NewRedisCache(client *redis.Client) RedisCache {
 	}
 }
 
-func (s *sRedisCache) Get(ctx context.Context, key string) (string, error) {
+func (s *sRedisCache) Get(ctx context.Context, key string) (string, bool, error) {
 	val, err := s.client.Get(ctx, key).Result()
 	if err != nil {
 		if errors.Is(err, redis.Nil) {
-			return val, nil //val = ""
+			return val, false, nil //val = ""
 		}
-		return val, fmt.Errorf("redis get error: %w", err)
+		return val, false, fmt.Errorf("redis get error: %w", err)
 	}
 
-	return val, nil // string json
+	return val, true, nil // string json
 }
 
 func (s *sRedisCache) Set(ctx context.Context, key string, value interface{}, expiration time.Duration) error {
@@ -145,15 +145,18 @@ func (s *sRedisCache) Exists(ctx context.Context, key string) (bool, error) {
 	return val == 1, nil
 }
 
-func (s *sRedisCache) WithDistributedLock(ctx context.Context, key string, ttlSeconds int, fn func(ctx context.Context) error) error {
-	lockTTL := time.Duration(ttlSeconds) * time.Second
-	lock, err := s.locker.Obtain(ctx, key, lockTTL, nil)
+func (s *sRedisCache) WithDistributedLock(ctx context.Context, key string, ttl time.Duration, fn func(ctx context.Context) (interface{}, error)) (interface{}, error) {
+	lock, err := s.locker.Obtain(ctx, key, ttl, nil)
 	if err == redislock.ErrNotObtained {
-		return fmt.Errorf("could not obtain lock for key: %s", key)
+		return nil, nil
 	} else if err != nil {
-		return fmt.Errorf("failed to obtain lock: %w", err)
+		return nil, fmt.Errorf("failed to obtain lock: %w", err)
 	}
 	defer lock.Release(ctx)
 
-	return fn(ctx)
+	result, err := fn(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
 }
