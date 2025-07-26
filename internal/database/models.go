@@ -7,7 +7,9 @@ package database
 import (
 	"database/sql"
 	"database/sql/driver"
+	"encoding/json"
 	"fmt"
+	"time"
 )
 
 type AccUserTwoFactorTwoFactorAuthType string
@@ -53,20 +55,19 @@ func (ns NullAccUserTwoFactorTwoFactorAuthType) Value() (driver.Value, error) {
 	return string(ns.AccUserTwoFactorTwoFactorAuthType), nil
 }
 
-// account_user_base
+// Table to store user base information
 type AccUserBase struct {
-	UserID         int32
-	UserAccount    string
-	UserPassword   string
-	UserSalt       string
-	UserLoginTime  sql.NullTime
-	UserLogoutTime sql.NullTime
-	UserLoginIp    sql.NullString
-	UserCreatedAt  sql.NullTime
-	UserUpdatedAt  sql.NullTime
-	UserDeletedAt  sql.NullTime
-	// authentication is enabled for the user
-	IsTwoFactorEnabled sql.NullInt32
+	UserID             int32
+	UserAccount        string
+	UserPassword       string
+	UserSalt           string
+	UserLoginTime      sql.NullTime
+	UserLogoutTime     sql.NullTime
+	UserLoginIp        sql.NullString
+	IsTwoFactorEnabled int32
+	UserCreatedAt      sql.NullTime
+	UserUpdatedAt      sql.NullTime
+	UserDeletedAt      sql.NullTime
 }
 
 // acc_user_info
@@ -92,14 +93,14 @@ type AccUserInfo struct {
 	// Authentication status: 0-Not Authenticated, 1-Pending, 2-Authenticated, 3-Failed
 	UserIsAuthentication uint8
 	// Record creation time
-	CreatedAt sql.NullTime
+	UserCreatedAt sql.NullTime
 	// Record update time
-	UpdatedAt sql.NullTime
+	UserUpdatedAt sql.NullTime
 	// Record deletion time
-	DeletedAt sql.NullTime
+	UserDeletedAt sql.NullTime
 }
 
-// acc_user_two_factor
+// Table to store user two factor information
 type AccUserTwoFactor struct {
 	TwoFactorID         uint32
 	UserID              uint32
@@ -112,7 +113,7 @@ type AccUserTwoFactor struct {
 	TwoFactorUpdatedAt  sql.NullTime
 }
 
-// account_user_verify
+// Table to store user verify information
 type AccUserVerify struct {
 	VerifyID        int32
 	VerifyOtp       string
@@ -123,4 +124,220 @@ type AccUserVerify struct {
 	IsDeleted       sql.NullInt32
 	VerifyCreatedAt sql.NullTime
 	VerifyUpdatedAt sql.NullTime
+}
+
+// Table to store booking information
+type Booking struct {
+	BookingID           int64
+	TripID              int64
+	UserID              sql.NullInt64
+	BookingTotalPrice   string
+	BookingStatus       int8
+	BookingContactName  string
+	BookingContactPhone string
+	BookingContactEmail string
+	BookingNote         sql.NullString
+	BookingCreatedAt    sql.NullTime
+	BookingUpdatedAt    sql.NullTime
+	BookingDeletedAt    sql.NullTime
+}
+
+// Outbox For Booking Service
+type BookingOutboxEvent struct {
+	BookingOutboxEventID          string
+	BookingID                     int64
+	BookingOutboxEventType        string
+	BookingOutboxEventPayload     json.RawMessage
+	BookingOutboxEventStatus      int8
+	BookingOutboxEventRetries     sql.NullInt32
+	BookingOutboxEventCreatedAt   sql.NullTime
+	BookingOutboxEventPublishedAt sql.NullTime
+	BookingOutboxEventLastError   sql.NullString
+}
+
+// Table to store bus information
+type Bus struct {
+	BusID           int32
+	BusLicensePlate string
+	BusCompany      string
+	BusPrice        string
+	BusCapacity     int32
+	BusCreatedAt    sql.NullTime
+	BusUpdatedAt    sql.NullTime
+	BusDeletedAt    sql.NullTime
+}
+
+// Table to store employee information
+type Employee struct {
+	EmployeeID                int64
+	EmployeeName              string
+	EmployeeEmail             sql.NullString
+	EmployeePhone             string
+	EmployeeGender            int8
+	EmployeeBirthDate         sql.NullTime
+	EmployeeBaseSalary        string
+	EmployeeType              int8
+	EmployeeLicenseNumber     sql.NullString
+	EmployeeLicenseExpiryDate sql.NullTime
+	EmployeeStatus            int8
+	EmployeeCreatedAt         sql.NullTime
+	EmployeeUpdatedAt         sql.NullTime
+	EmployeeDeletedAt         sql.NullTime
+}
+
+// notification_logs_table
+type NotificationLog struct {
+	NotificationID           int64
+	UserID                   int64
+	NotificationType         string
+	NotificationRecipient    string
+	NotificationSubject      sql.NullString
+	NotificationContent      string
+	NotificationStatus       int8
+	NotificationErrorMessage sql.NullString
+	NotificationSentAt       sql.NullTime
+	NotificationCreatedAt    sql.NullTime
+	NotificationUpdatedAt    sql.NullTime
+	NotificationDeletedAt    sql.NullTime
+}
+
+// Table to store payment information
+type Payment struct {
+	PaymentID                    int64
+	BookingID                    int64
+	UserID                       int64
+	PaymentAmount                string
+	PaymentCurrency              sql.NullString
+	PaymentMethod                int8
+	PaymentProviderTransactionID sql.NullString
+	PaymentStatus                int8
+	PaymentPaidAt                sql.NullTime
+	PaymentRefundedAt            sql.NullTime
+	PaymentExpiredAt             sql.NullTime
+	PaymentCreatedAt             sql.NullTime
+	PaymentUpdatedAt             sql.NullTime
+	PaymentDeletedAt             sql.NullTime
+}
+
+// Outbox for Payment Service
+type PaymentOutboxEvent struct {
+	PaymentOutboxEventID          string
+	PaymentID                     int64
+	PaymentOutboxEventType        string
+	PaymentOutboxEventPayload     json.RawMessage
+	PaymentOutboxEventStatus      int8
+	PaymentOutboxEventRetries     sql.NullInt32
+	PaymentOutboxEventCreatedAt   sql.NullTime
+	PaymentOutboxEventPublishedAt sql.NullTime
+	PaymentOutboxEventLastError   sql.NullString
+}
+
+// Table to store route information
+type Route struct {
+	RouteID                int32
+	RouteStartLocation     string
+	RouteEndLocation       string
+	RouteEstimatedDuration int32
+	RouteCreatedAt         sql.NullTime
+	RouteUpdatedAt         sql.NullTime
+	RouteDeletedAt         sql.NullTime
+}
+
+// Table to store seat information
+type Seat struct {
+	SeatID        int32
+	BusID         int32
+	SeatNumber    string
+	IsAvailable   sql.NullBool
+	SeatCreatedAt sql.NullTime
+	SeatUpdatedAt sql.NullTime
+	SeatDeletedAt sql.NullTime
+}
+
+// Table to store seat booking information
+type SeatBooking struct {
+	SeatBookingID         int64
+	BookingID             int64
+	SeatBookingSeatNumber string
+	SeatBookingPrice      string
+	PassengerName         string
+	PassengerPhone        string
+	SeatBookingCreatedAt  sql.NullTime
+	SeatBookingUpdatedAt  sql.NullTime
+	SeatBookingDeletedAt  sql.NullTime
+}
+
+// Table to store ticket information
+type Ticket struct {
+	TicketID               int64
+	UserID                 int64
+	TripID                 int64
+	SeatBookingID          int64
+	TicketCode             string
+	TicketStatus           int8
+	TicketIssuedAt         sql.NullTime
+	UserNickname           sql.NullString
+	UserGender             int8
+	SeatBookingPrice       sql.NullString
+	SeatBookingSeatNumber  string
+	BusLicensePlate        sql.NullString
+	TripDepartureTime      sql.NullTime
+	TripArrivalTime        sql.NullTime
+	RouteStartLocation     sql.NullString
+	RouteEndLocation       sql.NullString
+	TicketBookingCreatedAt sql.NullTime
+	TicketBookingUpdatedAt sql.NullTime
+	TicketBookingDeletedAt sql.NullTime
+}
+
+// Outbox for Ticket Service
+type TicketOutboxEvent struct {
+	TicketOutboxEventID          string
+	TicketID                     int64
+	TicketOutboxEventEventType   string
+	TicketOutboxEventPayload     json.RawMessage
+	TicketOutboxEventStatus      int8
+	TicketOutboxEventRetries     sql.NullInt32
+	TicketOutboxEventCreatedAt   sql.NullTime
+	TicketOutboxEventPublishedAt sql.NullTime
+	TicketOutboxEventLastError   sql.NullString
+}
+
+// Outbox for Transportation Service
+type TransportationOutboxEvent struct {
+	TransportationOutboxEventID          string
+	TripID                               int64
+	TransportationOutboxEventEventType   string
+	TransportationOutboxEventPayload     json.RawMessage
+	TransportationOutboxEventStatus      int8
+	TransportationOutboxEventRetries     sql.NullInt32
+	TransportationOutboxEventCreatedAt   sql.NullTime
+	TransportationOutboxEventPublishedAt sql.NullTime
+	TransportationOutboxEventLastError   sql.NullString
+}
+
+// Table to store trip information
+type Trip struct {
+	TripID            int64
+	RouteID           int64
+	BusID             int64
+	TripDepartureTime time.Time
+	TripArrivalTime   time.Time
+	TripBasePrice     string
+	TripCreatedAt     sql.NullTime
+	TripUpdatedAt     sql.NullTime
+	TripDeletedAt     sql.NullTime
+}
+
+// Table to control seat status
+type TripSeatLock struct {
+	TripSeatLockID         int64
+	TripID                 int64
+	TripSeatLockSeatNumber string
+	LockedByBookingID      sql.NullInt64
+	TripSeatLockStatus     int8
+	TripSeatLockExpiresAt  sql.NullTime
+	TripSeatLockCreatedAt  sql.NullTime
+	TripSeatLockUpdatedAt  sql.NullTime
+	TripSeatLockDeletedAt  sql.NullTime
 }

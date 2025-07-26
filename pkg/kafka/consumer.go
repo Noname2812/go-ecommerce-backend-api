@@ -12,12 +12,6 @@ import (
 // MessageHandler -.
 type MessageHandler func(ctx context.Context, key, value []byte) error
 
-// RetryPolicy defines retry behavior for message handler
-type RetryPolicy struct {
-	MaxRetries int           // Max number of retries
-	Backoff    time.Duration // Delay between retries
-}
-
 type Consumer struct {
 	reader      *kafka.Reader
 	logger      *zap.Logger
@@ -27,7 +21,6 @@ type Consumer struct {
 	wg          sync.WaitGroup
 	ctx         context.Context
 	cancel      context.CancelFunc
-	retryPolicy *RetryPolicy
 }
 
 // ConfigOption applies to kafka.ReaderConfig
@@ -54,33 +47,10 @@ func WithMaxWait(timeout time.Duration) ConfigOption {
 	}
 }
 
-// WithAutoCommit enables/disables auto commit.
-func WithAutoCommit(autoCommit bool) ConfigOption {
-	return func(cfg *kafka.ReaderConfig) {
-		cfg.CommitInterval = 0
-		if autoCommit {
-			cfg.CommitInterval = 1 * time.Second
-		}
-	}
-}
-
 // WithStartOffset sets the start offset (Earliest or Latest).
 func WithStartOffset(offset int64) ConfigOption {
 	return func(cfg *kafka.ReaderConfig) {
 		cfg.StartOffset = offset
-	}
-}
-
-// ConsumerOption applies to Consumer struct
-type ConsumerOption func(*Consumer)
-
-// WithRetry sets a retry policy for message handler
-func WithRetry(maxRetries int, backoff time.Duration) ConsumerOption {
-	return func(c *Consumer) {
-		c.retryPolicy = &RetryPolicy{
-			MaxRetries: maxRetries,
-			Backoff:    backoff,
-		}
 	}
 }
 
@@ -91,12 +61,7 @@ func NewConsumer(
 	logger *zap.Logger,
 	workerCount int,
 	configOpts []ConfigOption,
-	consumerOpts ...ConsumerOption,
 ) *Consumer {
-	if workerCount <= 0 {
-		workerCount = 1
-	}
-
 	// Default ReaderConfig
 	readerConfig := kafka.ReaderConfig{
 		Brokers:        brokers,
@@ -105,9 +70,11 @@ func NewConsumer(
 		MinBytes:       10e3,
 		MaxBytes:       10e6,
 		MaxWait:        1 * time.Second,
-		CommitInterval: 1 * time.Second,
+		CommitInterval: 0,
 		StartOffset:    kafka.LastOffset,
-		Logger:         nil,
+		ErrorLogger: kafka.LoggerFunc(func(msg string, args ...interface{}) {
+			logger.Sugar().Errorf(msg, args...)
+		}),
 	}
 
 	// Apply Kafka ReaderConfig options
@@ -124,12 +91,6 @@ func NewConsumer(
 		workerCount: workerCount,
 		jobQueue:    make(chan kafka.Message, workerCount*10),
 	}
-
-	// Apply Consumer logic options
-	for _, opt := range consumerOpts {
-		opt(consumer)
-	}
-
 	return consumer
 }
 

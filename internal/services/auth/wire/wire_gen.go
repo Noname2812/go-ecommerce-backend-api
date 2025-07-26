@@ -8,27 +8,32 @@ package authwire
 
 import (
 	"database/sql"
+	"github.com/Noname2812/go-ecommerce-backend-api/internal/common/utils/cache"
 	"github.com/Noname2812/go-ecommerce-backend-api/internal/services/auth/application/command/handler"
-	"github.com/Noname2812/go-ecommerce-backend-api/internal/services/auth/infrastructure/persistence/userbase"
+	"github.com/Noname2812/go-ecommerce-backend-api/internal/services/auth/infrastructure/client"
+	"github.com/Noname2812/go-ecommerce-backend-api/internal/services/auth/infrastructure/messaging"
+	"github.com/Noname2812/go-ecommerce-backend-api/internal/services/auth/infrastructure/persistence"
 	"github.com/Noname2812/go-ecommerce-backend-api/internal/services/auth/infrastructure/service"
-	"github.com/Noname2812/go-ecommerce-backend-api/internal/services/auth/infrastructure/service/messaging"
+	"github.com/Noname2812/go-ecommerce-backend-api/pkg/grpc"
 	"github.com/Noname2812/go-ecommerce-backend-api/pkg/kafka"
 	"github.com/google/wire"
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 )
 
-// Injectors from auth.wire.go:
+// Injectors from auth_wire.go:
 
-func InitAuthHttpCommandHandler(db *sql.DB, rdb *redis.Client, logger *zap.Logger, kafkaManager *kafka.Manager) authcommandhandler.AuthCommandHttpHandler {
-	userBaseRepository := userbaserepositoryimpl.NewUserBaseRepository(db)
-	authCacheService := authserviceimpl.NewAuthCacheService(rdb)
-	authEventPublisher := authmessagingserviceimpl.NewAuthEventPublisher(kafkaManager, logger)
-	authCommandService := authserviceimpl.NewAuthCommandService(logger, userBaseRepository, authCacheService, authEventPublisher)
+func InitAuthHttpCommandHandler(db *sql.DB, rdb *redis.Client, logger *zap.Logger, kafkaManager *kafka.Manager, manager *grpcserver.GRPCServerManager) authcommandhandler.AuthCommandHttpHandler {
+	userBaseRepository := authrepositoryimpl.NewUserBaseRepository(db)
+	redisCache := cacheservice.NewRedisCache(rdb)
+	authPublisherHandler := authmessagingimpl.NewAuthPublisher(kafkaManager, logger)
+	userGRPCClient := authclientgrpc.NewUserGRPCClient(manager)
+	transactionManager := authrepositoryimpl.NewTransactionManager(db)
+	authCommandService := authserviceimpl.NewAuthCommandService(logger, userBaseRepository, redisCache, authPublisherHandler, userGRPCClient, transactionManager)
 	authCommandHttpHandler := authcommandhandler.NewAuthCommandHttpHandler(authCommandService, logger)
 	return authCommandHttpHandler
 }
 
-// auth.wire.go:
+// auth_wire.go:
 
-var authRepositorySet = wire.NewSet(userbaserepositoryimpl.NewUserBaseRepository)
+var authRepositorySet = wire.NewSet(authrepositoryimpl.NewUserBaseRepository, authrepositoryimpl.NewTransactionManager)

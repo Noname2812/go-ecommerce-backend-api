@@ -35,9 +35,3 @@ func MatchingPassword(storeHash string, password string, salt string) bool {
 	hashPassword := HashPassword(password, salt)
 	return storeHash == hashPassword
 }
-
-// nodejs
-/*
-	let hashPass = new Array(32).fill(0)
-	hashPass = hashPass.slice()
-*/

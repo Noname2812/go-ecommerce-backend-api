@@ -10,4 +10,6 @@ type UserQueryService interface {
 	GetUserProfile(ctx context.Context, id uint64) (*usermodel.UserInfo, error)
 }
 
-type UserCommandService interface{}
+type UserCommandService interface {
+	DeleteForceUser(ctx context.Context, email string) error
+}

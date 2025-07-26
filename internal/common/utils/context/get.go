@@ -5,7 +5,7 @@ import (
 	"errors"
 	"log"
 
-	"github.com/Noname2812/go-ecommerce-backend-api/internal/common/utils/cache"
+	cacheservice "github.com/Noname2812/go-ecommerce-backend-api/internal/common/utils/cache"
 )
 
 type InfoUserUUID struct {
@@ -29,7 +29,7 @@ func GetUserIdFromUUID(ctx context.Context) (uint64, error) {
 	}
 	// get infoUser Redis from uuid
 	var inforUser InfoUserUUID
-	if err := cache.GetCache(ctx, sUUID, &inforUser); err != nil {
+	if err := cacheservice.GetCache(ctx, sUUID, &inforUser); err != nil {
 		log.Println("err:::", err)
 		return 0, err
 	}

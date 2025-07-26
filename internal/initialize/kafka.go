@@ -3,8 +3,9 @@ package initialize
 import (
 	"context"
 
-	authmessagingserviceimpl "github.com/Noname2812/go-ecommerce-backend-api/internal/services/auth/infrastructure/service/messaging"
+	authmessagingimpl "github.com/Noname2812/go-ecommerce-backend-api/internal/services/auth/infrastructure/messaging"
 	notificationwire "github.com/Noname2812/go-ecommerce-backend-api/internal/services/notification/wire"
+	userwire "github.com/Noname2812/go-ecommerce-backend-api/internal/services/user/wire"
 	"github.com/Noname2812/go-ecommerce-backend-api/pkg/setting"
 	"go.uber.org/zap"
 )
@@ -13,7 +14,7 @@ func InitKafka(ctx context.Context, config *setting.Config, container *AppContai
 	// ---------------- Producers ---------------- //
 
 	// auth
-	authPublisher := authmessagingserviceimpl.NewAuthEventPublisher(container.KafkaManager, container.Logger)
+	authPublisher := authmessagingimpl.NewAuthPublisher(container.KafkaManager, container.Logger)
 	authPublisher.Register()
 
 	// ---------------- Consumers ---------------- //
@@ -22,7 +23,10 @@ func InitKafka(ctx context.Context, config *setting.Config, container *AppContai
 	if err := notificationConsumer.Subscribe(); err != nil {
 		container.Logger.Fatal("failed to subscribe notification consumers", zap.Error(err))
 	}
-
-	// start all
+	// user
+	userConsumer := userwire.InitUserConsumer(container.DB, container.Logger, container.KafkaManager, container.RedisClient)
+	if err := userConsumer.Subscribe(); err != nil {
+		container.Logger.Fatal("failed to subscribe notification consumers", zap.Error(err))
+	}
 	container.KafkaManager.StartAllConsumers(ctx)
 }

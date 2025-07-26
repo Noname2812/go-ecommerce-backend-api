@@ -1,14 +1,81 @@
 basePath: /v1
 definitions:
+  authcommandrequest.SaveAccountRequest:
+    properties:
+      birthday:
+        description: birthday
+        type: string
+      confirm_pass:
+        description: confirm password
+        type: string
+      email:
+        description: email
+        type: string
+      gender:
+        description: gender
+        enum:
+        - 0
+        - 1
+        - 2
+        type: integer
+      name:
+        description: name
+        type: string
+      password:
+        description: password
+        minLength: 8
+        type: string
+      phone:
+        description: phone
+        type: string
+      token:
+        description: token
+        type: string
+    required:
+    - confirm_pass
+    - email
+    - name
+    - password
+    - token
+    type: object
+  authcommandrequest.UserRegistratorRequest:
+    properties:
+      email:
+        description: email
+        type: string
+      purpose:
+        description: purpose (TEST_USER, CUSTOMER, ADMIN, etc.)
+        enum:
+        - TEST_USER
+        - CUSTOMER
+        - ADMIN
+        type: string
+    required:
+    - email
+    - purpose
+    type: object
+  authcommandrequest.VerifyOTPRequest:
+    properties:
+      email:
+        description: email
+        type: string
+      otp:
+        description: otp
+        type: string
+    required:
+    - email
+    - otp
+    type: object
   response.ErrorResponseData:
     properties:
       code:
         type: integer
-      detail: {}
-      error:
+      errors:
+        additionalProperties:
+          type: string
+        type: object
+      message:
         type: string
-      success:
-        type: boolean
     type: object
   response.ResponseData:
     properties:
@@ -17,19 +84,32 @@ definitions:
       data: {}
       message:
         type: string
-      success:
-        type: boolean
     type: object
-  usercommandrequest.UserRegistratorRequest:
+  transportationqueryresponse.GetListTripsResponse:
     properties:
-      email:
+      page:
+        type: integer
+      total:
+        type: integer
+      trips:
+        items:
+          $ref: '#/definitions/transportationqueryresponse.Trip'
+        type: array
+    type: object
+  transportationqueryresponse.Trip:
+    properties:
+      arrival_date:
         type: string
-      purpose:
-        description: TEST_USER, CUSTOMER, ADMIN, etc.
+      departure_date:
         type: string
-    required:
-    - email
-    - purpose
+      from_location:
+        type: string
+      id:
+        type: integer
+      price:
+        type: number
+      to_location:
+        type: string
     type: object
 host: localhost:8002
 info:
@@ -56,7 +136,7 @@ paths:
         name: payload
         required: true
         schema:
-          $ref: '#/definitions/usercommandrequest.UserRegistratorRequest'
+          $ref: '#/definitions/authcommandrequest.UserRegistratorRequest'
       produces:
       - application/json
       responses:
@@ -64,13 +144,121 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/response.ResponseData'
-        "500":
-          description: Internal Server Error
+        "400":
+          description: Bad Request
           schema:
             $ref: '#/definitions/response.ErrorResponseData'
       summary: User Registration
       tags:
-      - account management
+      - auth management
+  /auth/save-account:
+    post:
+      consumes:
+      - application/json
+      description: When user has registered send otp to email
+      parameters:
+      - description: payload
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/authcommandrequest.SaveAccountRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.ResponseData'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponseData'
+      summary: User Base Registration
+      tags:
+      - auth management
+  /auth/verify-account:
+    post:
+      consumes:
+      - application/json
+      description: When user is verified otp from email
+      parameters:
+      - description: payload
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/authcommandrequest.VerifyOTPRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.ResponseData'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponseData'
+      summary: Verify OTP
+      tags:
+      - auth management
+  /transportation/search-trips:
+    get:
+      consumes:
+      - application/json
+      description: Get list trips
+      parameters:
+      - description: Departure date
+        in: query
+        name: departure_date
+        required: true
+        type: string
+      - description: From location
+        in: query
+        name: from_location
+        required: true
+        type: string
+      - description: To location
+        in: query
+        name: to_location
+        required: true
+        type: string
+      - description: Page number (default 1)
+        in: query
+        name: page
+        type: integer
+      - description: Page size (default 10)
+        in: query
+        name: page_size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.ResponseData'
+            - properties:
+                data:
+                  $ref: '#/definitions/transportationqueryresponse.GetListTripsResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponseData'
+        "408":
+          description: Request Timeout
+          schema:
+            $ref: '#/definitions/response.ErrorResponseData'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponseData'
+      summary: Get list trips
+      tags:
+      - Transportation
   /user/{id}:
     get:
       consumes:
@@ -89,8 +277,8 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/response.ResponseData'
-        "500":
-          description: Internal Server Error
+        "400":
+          description: Bad Request
           schema:
             $ref: '#/definitions/response.ErrorResponseData'
       summary: Get user details by ID

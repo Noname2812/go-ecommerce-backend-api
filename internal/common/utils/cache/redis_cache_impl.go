@@ -1,4 +1,4 @@
-package cache
+package cacheservice
 
 import (
 	"context"
@@ -17,32 +17,98 @@ type sRedisCache struct {
 	locker *redislock.Client
 }
 
-func NewRedisCache(client *redis.Client) *sRedisCache {
+// Eval implements RedisCache.
+// Run a Lua script in Redis for atomic operations
+func (s *sRedisCache) Eval(ctx context.Context, script string, keys []string, args ...interface{}) (interface{}, error) {
+	result, err := s.client.Eval(ctx, script, keys, args...).Result()
+	if err != nil {
+		return nil, fmt.Errorf("redis eval error: %w", err)
+	}
+	return result, nil
+}
+
+// HDel implements RedisCache.
+// Delete a field in a hash
+func (s *sRedisCache) HDel(ctx context.Context, key string, field string) error {
+	if err := s.client.HDel(ctx, key, field).Err(); err != nil {
+		return fmt.Errorf("redis hdel error: %w", err)
+	}
+	return nil
+}
+
+// HGetAll implements RedisCache.
+// Get all fields in a hash
+func (s *sRedisCache) HGetAll(ctx context.Context, key string) (map[string]string, error) {
+	result, err := s.client.HGetAll(ctx, key).Result()
+	if err != nil {
+		if errors.Is(err, redis.Nil) {
+			return map[string]string{}, nil // return empty map if not exist
+		}
+		return nil, fmt.Errorf("redis hgetall error: %w", err)
+	}
+	return result, nil
+}
+
+// HSet implements RedisCache.
+// Set a field in a hash
+func (s *sRedisCache) HSet(ctx context.Context, key string, field string, value interface{}) error {
+	val, err := json.Marshal(value)
+	if err != nil {
+		return fmt.Errorf("json marshal error: %w", err)
+	}
+	if err := s.client.HSet(ctx, key, field, val).Err(); err != nil {
+		return fmt.Errorf("redis hset error: %w", err)
+	}
+	return nil
+}
+
+// HSetNX implements RedisCache.
+// Set a field in a hash only if it does not exist
+func (s *sRedisCache) HSetNX(ctx context.Context, key string, field string, value interface{}) (bool, error) {
+	val, err := json.Marshal(value)
+	if err != nil {
+		return false, fmt.Errorf("json marshal error: %w", err)
+	}
+	success, err := s.client.HSetNX(ctx, key, field, val).Result()
+	if err != nil {
+		return false, fmt.Errorf("redis hsetnx error: %w", err)
+	}
+	return success, nil
+}
+
+// Expire implements RedisCache.
+func (s *sRedisCache) Expire(ctx context.Context, key string, expiration time.Duration) error {
+	if err := s.client.Expire(ctx, key, expiration).Err(); err != nil {
+		return fmt.Errorf("redis expire error: %w", err)
+	}
+	return nil
+}
+
+func NewRedisCache(client *redis.Client) RedisCache {
 	return &sRedisCache{
 		client: client,
 		locker: redislock.New(client),
 	}
 }
 
-func (s *sRedisCache) Get(ctx context.Context, key string) (string, error) {
+func (s *sRedisCache) Get(ctx context.Context, key string) (string, bool, error) {
 	val, err := s.client.Get(ctx, key).Result()
-	// fmt.Println("val:", val)
 	if err != nil {
 		if errors.Is(err, redis.Nil) {
-			return val, nil
+			return val, false, nil //val = ""
 		}
-		return val, fmt.Errorf("redis get error: %w", err)
+		return val, false, fmt.Errorf("redis get error: %w", err)
 	}
 
-	return val, nil // Trả về chuỗi JSON.
+	return val, true, nil // string json
 }
 
-func (s *sRedisCache) Set(ctx context.Context, key string, value interface{}, expirationSeconds int) error {
+func (s *sRedisCache) Set(ctx context.Context, key string, value interface{}, expiration time.Duration) error {
 	b, err := json.Marshal(value)
 	if err != nil {
 		return fmt.Errorf("json marshal error: %w", err)
 	}
-	if err := s.client.Set(ctx, key, b, time.Duration(expirationSeconds)*time.Second).Err(); err != nil {
+	if err := s.client.Set(ctx, key, b, expiration).Err(); err != nil {
 		return fmt.Errorf("redis set error: %w", err)
 	}
 	return nil
@@ -79,15 +145,18 @@ func (s *sRedisCache) Exists(ctx context.Context, key string) (bool, error) {
 	return val == 1, nil
 }
 
-func (s *sRedisCache) WithDistributedLock(ctx context.Context, key string, ttlSeconds int, fn func(ctx context.Context) error) error {
-	lockTTL := time.Duration(ttlSeconds) * time.Second
-	lock, err := s.locker.Obtain(ctx, key, lockTTL, nil)
+func (s *sRedisCache) WithDistributedLock(ctx context.Context, key string, ttl time.Duration, fn func(ctx context.Context) (interface{}, error)) (interface{}, error) {
+	lock, err := s.locker.Obtain(ctx, key, ttl, nil)
 	if err == redislock.ErrNotObtained {
-		return fmt.Errorf("could not obtain lock for key: %s", key)
+		return nil, nil
 	} else if err != nil {
-		return fmt.Errorf("failed to obtain lock: %w", err)
+		return nil, fmt.Errorf("failed to obtain lock: %w", err)
 	}
 	defer lock.Release(ctx)
 
-	return fn(ctx)
+	result, err := fn(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
 }

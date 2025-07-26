@@ -12,43 +12,13 @@ import (
 	"go.uber.org/zap"
 )
 
-type ProducerOption func(*kafka.Writer)
+// Always retry on errors
+const (
+	MAX_RETRIES    = 3                      // Maximum number of retry attempts
+	BACK_OFF_DELAY = 100 * time.Millisecond // Back-off delay between retry attempts
+)
 
-// WithBalancer allows setting a custom balancer.
-func WithBalancer(balancer kafka.Balancer) ProducerOption {
-	return func(w *kafka.Writer) {
-		w.Balancer = balancer
-	}
-}
-
-// WithAsync allows enabling/disabling async sending.
-func WithAsync(async bool) ProducerOption {
-	return func(w *kafka.Writer) {
-		w.Async = async
-	}
-}
-
-// WithBatchSize allows setting the batch size.
-func WithBatchSize(batchSize int) ProducerOption {
-	return func(w *kafka.Writer) {
-		w.BatchSize = batchSize
-	}
-}
-
-// WithBatchTimeout allows setting the batch timeout.
-func WithBatchTimeout(timeout time.Duration) ProducerOption {
-	return func(w *kafka.Writer) {
-		w.BatchTimeout = timeout
-	}
-}
-
-// WithRequiredAcks allows configuring the required acks (0, 1, all).
-func WithRequiredAcks(acks kafka.RequiredAcks) ProducerOption {
-	return func(w *kafka.Writer) {
-		w.RequiredAcks = acks
-	}
-}
-
+// TopicConfig is the configuration for a Kafka topic
 type TopicConfig struct {
 	Async        bool               // Enable asynchronous sending. If true, messages are sent without waiting for a response.
 	RequiredAcks kafka.RequiredAcks //  0: No response needed (fastest, least safe). 1: Wait for leader broker only. -1 or All: Wait for all in-sync replicas (most reliable).
@@ -57,6 +27,7 @@ type TopicConfig struct {
 	Balancer     kafka.Balancer     // Balancer is used to distribute messages across partitions. (kafka.Hash, kafka.RoundRobin, kafka.LeastBytes).
 }
 
+// Producer is the Kafka producer
 type Producer struct {
 	writers map[string]*kafka.Writer
 	logger  *zap.Logger
@@ -94,15 +65,43 @@ func (p *Producer) SendMessage(ctx context.Context, topic string, key []byte, va
 		Time:  time.Now(),
 	}
 
-	if err := writer.WriteMessages(ctx, msg); err != nil {
+	var lastErr error
+	for attempt := 1; attempt <= MAX_RETRIES; attempt++ {
+		err := writer.WriteMessages(ctx, msg)
+		if err == nil {
+			p.logger.Info("kafka message sent",
+				zap.String("topic", topic),
+				zap.ByteString("key", key),
+				zap.Int("attempt", attempt),
+			)
+			return nil
+		}
+		lastErr = err
+		p.logger.Warn("failed to write kafka message",
+			zap.String("topic", topic),
+			zap.ByteString("key", key),
+			zap.Int("attempt", attempt),
+			zap.Error(err),
+		)
+
+		// Exponential backoff
+		backoff := time.Duration(attempt) * BACK_OFF_DELAY
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("context canceled during retry: %w", ctx.Err())
+		case <-time.After(backoff):
+			// continue retrying
+		}
+	}
+
+	if lastErr != nil {
 		p.logger.Error("failed to write kafka message",
 			zap.String("topic", topic),
 			zap.ByteString("key", key),
 			zap.Error(err),
 		)
-		return fmt.Errorf("failed to write message: %w", err)
+		return fmt.Errorf("failed to write message: %w", lastErr)
 	}
-
 	p.logger.Info("kafka message sent",
 		zap.String("topic", topic),
 		zap.ByteString("key", key),
@@ -110,6 +109,7 @@ func (p *Producer) SendMessage(ctx context.Context, topic string, key []byte, va
 	return nil
 }
 
+// RegisterTopic registers a new topic with the producer
 func (p *Producer) RegisterTopic(topic string, cfg TopicConfig) {
 	p.mu.Lock()
 	defer p.mu.Unlock()

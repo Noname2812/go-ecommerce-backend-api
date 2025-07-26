@@ -3,10 +3,12 @@ package router
 import (
 	"github.com/Noname2812/go-ecommerce-backend-api/pkg/setting"
 	"github.com/gin-gonic/gin"
+	"github.com/go-playground/validator/v10"
 
 	"github.com/Noname2812/go-ecommerce-backend-api/internal/initialize"
 	"github.com/Noname2812/go-ecommerce-backend-api/internal/middlewares"
 	authcontroller "github.com/Noname2812/go-ecommerce-backend-api/internal/services/auth/controller"
+	transportationcontroller "github.com/Noname2812/go-ecommerce-backend-api/internal/services/transportation/controller"
 	usercontroller "github.com/Noname2812/go-ecommerce-backend-api/internal/services/user/controller"
 )
 
@@ -20,9 +22,10 @@ func InitHttpRouter(config *setting.Config, container *initialize.AppContainer) 
 		gin.SetMode(gin.ReleaseMode)
 		r = gin.New()
 	}
+	v := validator.New()
 	// middlewares
 	r.Use(middlewares.CORS)
-	r.Use(middlewares.ValidatorMiddleware())
+	r.Use(middlewares.ValidatorMiddleware(v))
 	r.Use(middlewares.RecoveryWithLogger(container.Logger))
 	MainGroup := r.Group("/v1")
 	{
@@ -31,6 +34,7 @@ func InitHttpRouter(config *setting.Config, container *initialize.AppContainer) 
 	{
 		usercontroller.InitUserRouter(MainGroup, container)
 		authcontroller.InitAuthRouter(MainGroup, container)
+		transportationcontroller.InitTransportationRouter(MainGroup, container)
 	}
 
 	return r

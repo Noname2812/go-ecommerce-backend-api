@@ -5,29 +5,16 @@ import (
 
 	"github.com/Noname2812/go-ecommerce-backend-api/internal/initialize"
 	usercontroller "github.com/Noname2812/go-ecommerce-backend-api/internal/services/user/controller"
-	"github.com/Noname2812/go-ecommerce-backend-api/pkg/grpcserver"
 	"github.com/Noname2812/go-ecommerce-backend-api/pkg/setting"
-	"go.uber.org/zap"
 )
 
 func InitGrpcServer(config *setting.Config, appContainer *initialize.AppContainer) {
-	servers := []*grpcserver.GRPCServer{}
-	// user grpc
-	userGrpcAddr := fmt.Sprintf("localhost:%d", config.GRPC.UserServicePort)
+	// ================== Server =================== //
+	// User server
+	userGrpcAddr := fmt.Sprintf("%s:%d", config.Server.Host, config.GRPC.UserServicePort)
 	userServer := usercontroller.InitUserGrpcServer(appContainer, userGrpcAddr)
-	servers = append(servers, userServer)
+	appContainer.GRPCServerManager.AddServer("user-grpc-server", userServer)
 
-	// Start all gRPC servers concurrently
-	for _, srv := range servers {
-		go func(s *grpcserver.GRPCServer) {
-			appContainer.Logger.Info("Starting gRPC server",
-				zap.String("address", s.Addr()))
+	go appContainer.GRPCServerManager.StartAllServers()
 
-			if err := s.Start(); err != nil {
-				appContainer.Logger.Fatal("Failed to start gRPC server",
-					zap.String("address", s.Addr()),
-					zap.Error(err))
-			}
-		}(srv)
-	}
 }

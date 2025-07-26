@@ -40,11 +40,11 @@ func (m *Manager) AddConsumer(
 	handler MessageHandler,
 	workerCount int,
 	configOpts []ConfigOption,
-	consumerOpts ...ConsumerOption,
 ) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
+	// check if consumer already exists
 	if consumers, exists := m.Consumers[topic]; exists {
 		for _, consumerInfo := range consumers {
 			if consumerInfo.GroupID == groupID {
@@ -53,6 +53,7 @@ func (m *Manager) AddConsumer(
 		}
 	}
 
+	// create consumer
 	consumer := NewConsumer(
 		m.brokers,
 		topic,
@@ -61,9 +62,9 @@ func (m *Manager) AddConsumer(
 		m.logger,
 		workerCount,
 		configOpts,
-		consumerOpts...,
 	)
 
+	// create consumer info
 	consumerInfo := &ConsumerInfo{
 		Consumer:    consumer,
 		Topic:       topic,
@@ -71,6 +72,7 @@ func (m *Manager) AddConsumer(
 		WorkerCount: workerCount,
 	}
 
+	// add consumer info to map
 	m.Consumers[topic] = append(m.Consumers[topic], consumerInfo)
 
 	m.logger.Info("worker pool consumer added",
@@ -82,6 +84,7 @@ func (m *Manager) AddConsumer(
 	return nil
 }
 
+// Start all consumers
 func (m *Manager) StartAllConsumers(ctx context.Context) {
 	m.mu.RLock()
 	allConsumers := make([]*ConsumerInfo, 0)
@@ -90,6 +93,7 @@ func (m *Manager) StartAllConsumers(ctx context.Context) {
 	}
 	m.mu.RUnlock()
 
+	// start all consumers
 	for _, consumerInfo := range allConsumers {
 		go func(ci *ConsumerInfo) {
 			if err := ci.Consumer.Start(ctx); err != nil {
@@ -105,10 +109,12 @@ func (m *Manager) StartAllConsumers(ctx context.Context) {
 
 // ******************** Producer *************
 
+// Register topic
 func (m *Manager) RegisterTopic(topic string, cfg TopicConfig) {
 	m.producer.RegisterTopic(topic, cfg)
 }
 
+// Send message
 func (m *Manager) SendMessage(ctx context.Context, topic string, key []byte, value interface{}) error {
 	return m.producer.SendMessage(ctx, topic, key, value)
 }
