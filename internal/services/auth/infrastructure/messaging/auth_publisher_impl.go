@@ -18,7 +18,8 @@ type authPublisher struct {
 
 // PublishUserBaseInsertedFail implements authservice.AuthEventPublisher.
 func (a *authPublisher) PublishUserBaseInsertedFail(ctx context.Context, event *authdomainevent.UserBaseInsertedFail) error {
-	return a.publishEvent(ctx, event.EventName(), event.Email, event)
+	a.kafkaManager.SendMessageFireAndForget(ctx, event.EventName(), []byte(event.Email), event)
+	return nil
 }
 
 // Register implements authservice.AuthEventPublisher.
@@ -37,7 +38,10 @@ func (a *authPublisher) Register() {
 
 // OtpVertifyUserRegisterCreated implements authservice.AuthEventPublisher.
 func (a *authPublisher) PublishOtpVertifyUserRegisterCreated(ctx context.Context, event *authdomainevent.OtpVertifyUserRegisterCreated) error {
-	return a.publishEvent(ctx, event.EventName(), event.Email, event)
+	if err := a.kafkaManager.SendMessageSync(ctx, event.EventName(), []byte(event.Email), event); err != nil {
+		return err
+	}
+	return nil
 }
 
 func NewAuthPublisher(manager *kafkaCustom.Manager, logger *zap.Logger) authmessaging.AuthPublisher {
@@ -45,22 +49,4 @@ func NewAuthPublisher(manager *kafkaCustom.Manager, logger *zap.Logger) authmess
 		kafkaManager: manager,
 		logger:       logger,
 	}
-}
-
-func (p *authPublisher) publishEvent(ctx context.Context, topic, key string, event interface{}) error {
-	if err := p.kafkaManager.SendMessage(ctx, topic, []byte(key), event); err != nil {
-		p.logger.Error("failed to publish event ",
-			zap.String("topic", topic),
-			zap.String("key", key),
-			zap.Error(err),
-		)
-		return err
-	}
-
-	p.logger.Info("event published successfully",
-		zap.String("topic", topic),
-		zap.String("key", key),
-	)
-
-	return nil
 }

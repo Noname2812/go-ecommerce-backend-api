@@ -44,8 +44,8 @@ func NewProducer(brokers []string, logger *zap.Logger) *Producer {
 	}
 }
 
-// SendMessage -.
-func (p *Producer) SendMessage(ctx context.Context, topic string, key []byte, value interface{}) error {
+// SendMessage Sync - Send message synchronously and wait for a response.
+func (p *Producer) SendMessageSync(ctx context.Context, topic string, key []byte, value interface{}) error {
 	valueBytes, err := json.Marshal(value)
 	if err != nil {
 		return fmt.Errorf("failed to marshal value: %w", err)
@@ -95,10 +95,10 @@ func (p *Producer) SendMessage(ctx context.Context, topic string, key []byte, va
 	}
 
 	if lastErr != nil {
-		p.logger.Error("failed to write kafka message",
+		p.logger.Error("failed to write kafka message after retries",
 			zap.String("topic", topic),
 			zap.ByteString("key", key),
-			zap.Error(err),
+			zap.Error(lastErr),
 		)
 		return fmt.Errorf("failed to write message: %w", lastErr)
 	}
@@ -107,6 +107,109 @@ func (p *Producer) SendMessage(ctx context.Context, topic string, key []byte, va
 		zap.ByteString("key", key),
 	)
 	return nil
+}
+
+// SendMessageFireAndForget - Send message asynchronously and do not wait for a response.
+func (p *Producer) SendMessageFireAndForget(ctx context.Context, topic string, key []byte, value interface{}) {
+	valueBytes, err := json.Marshal(value)
+	if err != nil {
+		p.logger.Error("failed to marshal value", zap.Error(err))
+		return
+	}
+
+	p.mu.RLock()
+	writer, ok := p.writers[topic]
+	p.mu.RUnlock()
+
+	if !ok {
+		p.logger.Error("no writer registered for topic", zap.String("topic", topic))
+		return
+	}
+
+	msg := kafka.Message{
+		Key:   key,
+		Value: valueBytes,
+		Time:  time.Now(),
+	}
+
+	go func() {
+		_ = writer.WriteMessages(ctx, msg)
+	}()
+}
+
+// SendMessageAsync sends a message asynchronously and returns a channel to receive the result
+func (p *Producer) SendMessageAsync(ctx context.Context, topic string, key []byte, value interface{}) <-chan error {
+	resultChan := make(chan error, 1)
+
+	go func() {
+		defer close(resultChan)
+
+		valueBytes, err := json.Marshal(value)
+		if err != nil {
+			p.logger.Error("failed to marshal value", zap.Error(err))
+			resultChan <- fmt.Errorf("failed to marshal value: %w", err)
+			return
+		}
+
+		p.mu.RLock()
+		writer, ok := p.writers[topic]
+		p.mu.RUnlock()
+
+		if !ok {
+			p.logger.Error("no writer registered for topic", zap.String("topic", topic))
+			resultChan <- fmt.Errorf("no writer registered for topic %s", topic)
+			return
+		}
+
+		msg := kafka.Message{
+			Key:   key,
+			Value: valueBytes,
+			Time:  time.Now(),
+		}
+
+		var lastErr error
+		for attempt := 1; attempt <= MAX_RETRIES; attempt++ {
+			err := writer.WriteMessages(ctx, msg)
+			if err == nil {
+				p.logger.Info("kafka message sent asynchronously",
+					zap.String("topic", topic),
+					zap.ByteString("key", key),
+					zap.Int("attempt", attempt),
+				)
+				resultChan <- nil
+				return
+			}
+			lastErr = err
+			p.logger.Warn("failed to write kafka message asynchronously",
+				zap.String("topic", topic),
+				zap.ByteString("key", key),
+				zap.Int("attempt", attempt),
+				zap.Error(err),
+			)
+
+			// Exponential backoff
+			backoff := time.Duration(attempt) * BACK_OFF_DELAY
+			select {
+			case <-ctx.Done():
+				resultChan <- fmt.Errorf("context canceled during retry: %w", ctx.Err())
+				return
+			case <-time.After(backoff):
+				// continue retrying
+			}
+		}
+
+		if lastErr != nil {
+			p.logger.Error("failed to write kafka message asynchronously after retries",
+				zap.String("topic", topic),
+				zap.ByteString("key", key),
+				zap.Error(lastErr),
+			)
+			resultChan <- fmt.Errorf("failed to write message: %w", lastErr)
+			return
+		}
+	}()
+
+	return resultChan
 }
 
 // RegisterTopic registers a new topic with the producer

@@ -114,9 +114,19 @@ func (m *Manager) RegisterTopic(topic string, cfg TopicConfig) {
 	m.producer.RegisterTopic(topic, cfg)
 }
 
-// Send message
-func (m *Manager) SendMessage(ctx context.Context, topic string, key []byte, value interface{}) error {
-	return m.producer.SendMessage(ctx, topic, key, value)
+// SendMessageSync sends message synchronously
+func (m *Manager) SendMessageSync(ctx context.Context, topic string, key []byte, value interface{}) error {
+	return m.producer.SendMessageSync(ctx, topic, key, value)
+}
+
+// SendMessageAsync sends message asynchronously and returns a channel to receive the result
+func (m *Manager) SendMessageAsync(ctx context.Context, topic string, key []byte, value interface{}) <-chan error {
+	return m.producer.SendMessageAsync(ctx, topic, key, value)
+}
+
+// SendMessageFireAndForget sends message asynchronously without waiting for result
+func (m *Manager) SendMessageFireAndForget(ctx context.Context, topic string, key []byte, value interface{}) {
+	m.producer.SendMessageFireAndForget(ctx, topic, key, value)
 }
 
 // Close

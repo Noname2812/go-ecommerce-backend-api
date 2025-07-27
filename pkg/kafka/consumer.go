@@ -13,14 +13,15 @@ import (
 type MessageHandler func(ctx context.Context, key, value []byte) error
 
 type Consumer struct {
-	reader      *kafka.Reader
-	logger      *zap.Logger
-	handler     MessageHandler
-	workerCount int
-	jobQueue    chan kafka.Message
-	wg          sync.WaitGroup
-	ctx         context.Context
-	cancel      context.CancelFunc
+	reader       *kafka.Reader
+	logger       *zap.Logger
+	handler      MessageHandler
+	workerCount  int
+	jobQueue     chan kafka.Message
+	wg           sync.WaitGroup
+	ctx          context.Context
+	cancel       context.CancelFunc
+	manualCommit bool
 }
 
 // ConfigOption applies to kafka.ReaderConfig
@@ -54,6 +55,12 @@ func WithStartOffset(offset int64) ConfigOption {
 	}
 }
 
+// WithCommitInterval sets the commit interval (0 = manual commit)
+func WithCommitInterval(interval time.Duration) ConfigOption {
+	return func(cfg *kafka.ReaderConfig) {
+		cfg.CommitInterval = interval
+	}
+}
 func NewConsumer(
 	brokers []string,
 	topic, groupID string,
@@ -85,11 +92,12 @@ func NewConsumer(
 	reader := kafka.NewReader(readerConfig)
 
 	consumer := &Consumer{
-		reader:      reader,
-		logger:      logger,
-		handler:     handler,
-		workerCount: workerCount,
-		jobQueue:    make(chan kafka.Message, workerCount*10),
+		reader:       reader,
+		logger:       logger,
+		handler:      handler,
+		workerCount:  workerCount,
+		jobQueue:     make(chan kafka.Message, workerCount*10),
+		manualCommit: readerConfig.CommitInterval == 0,
 	}
 	return consumer
 }
@@ -184,13 +192,26 @@ func (c *Consumer) worker(id int) {
 					zap.Error(err),
 				)
 			} else {
-				c.logger.Debug("message processed successfully",
-					zap.Int("worker_id", id),
-					zap.String("topic", msg.Topic),
-					zap.Int("partition", msg.Partition),
-					zap.Int64("offset", msg.Offset),
-					zap.Duration("duration", duration),
-				)
+				if c.manualCommit {
+					if err := c.reader.CommitMessages(c.ctx, msg); err != nil {
+						c.logger.Error("failed to commit message manually", zap.Error(err))
+					}
+					c.logger.Debug("message committed manually",
+						zap.Int("worker_id", id),
+						zap.String("topic", msg.Topic),
+						zap.Int("partition", msg.Partition),
+						zap.Int64("offset", msg.Offset),
+					)
+				}
+				if !c.manualCommit {
+					c.logger.Debug("message processed successfully",
+						zap.Int("worker_id", id),
+						zap.String("topic", msg.Topic),
+						zap.Int("partition", msg.Partition),
+						zap.Int64("offset", msg.Offset),
+						zap.Duration("duration", duration),
+					)
+				}
 			}
 		}
 	}
