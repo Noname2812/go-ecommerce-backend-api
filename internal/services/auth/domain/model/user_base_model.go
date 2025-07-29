@@ -6,40 +6,29 @@ import (
 	vo "github.com/Noname2812/go-ecommerce-backend-api/internal/common/vo"
 )
 
-// UserBase represents the basic information of a user.
+// UserBase model
 type UserBase struct {
-	// User ID
-	UserID uint64
+	UserID uint64 // primary key
 
-	// User account
-	UserAccount vo.Email
+	UserAccount vo.Email // account (ex: "john.doe@example.com")
 
-	// User Password
-	UserPassword string
+	UserPassword string // password (ex: "123456")
 
-	// User Salt
-	UserSalt string
+	UserSalt string // salt (ex: "xzx312sa123")
 
-	// Last login time
-	UserLoginTime *time.Time
+	UserLoginTime *time.Time // login time (ex: 2021-01-01 00:00:00)
 
-	// Last logout time
-	UserLogoutTime *time.Time
+	UserLogoutTime *time.Time // logout time (ex: 2021-01-01 00:00:00)
 
-	// Login IP address
-	UserLoginIp string
+	UserLoginIp string // login IP address (ex: "127.0.0.1")
 
-	// Is 2FA enabled
-	IsTwoFactorEnabled bool
+	IsTwoFactorEnabled bool // is 2FA enabled (ex: true, false)
 
-	// Record creation time
-	CreatedAt time.Time
+	CreatedAt time.Time // created at (ex: 2021-01-01 00:00:00)
 
-	// Record update time
-	UpdatedAt time.Time
+	UpdatedAt time.Time // updated at (ex: 2021-01-01 00:00:00)
 
-	// Record deletion time
-	DeletedAt *time.Time
+	DeletedAt *time.Time // deleted at (ex: 2021-01-01 00:00:00)
 }
 
 // NewUserBase creates a new UserBase domain entity.

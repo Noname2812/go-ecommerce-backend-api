@@ -7,32 +7,20 @@ import (
 	vo "github.com/Noname2812/go-ecommerce-backend-api/internal/common/vo"
 )
 
-// User information
+// User information model
 type UserInfo struct {
-	// User ID
-	UserID uint64
-	// User account
-	UserAccount string
-	// User nickname
-	UserNickname string
-	// User avatar
-	UserAvatar *string
-	// User state: 0-Locked, 1-Activated, 2-Not Activated
-	UserState enum.UserState
-	// Mobile phone number
-	UserPhone *vo.Phone
-	// User gender: 0-Secret, 1-Male, 2-Female
-	UserGender enum.Gender
-	// User birthday
-	UserBirthday *time.Time
-	// Authentication status: 0-Not Authenticated, 1-Pending, 2-Authenticated, 3-Failed
-	UserAuthenticationState enum.AuthenticationState
-	// Record creation time
-	UserCreatedAt time.Time
-	// Record update time
-	UserUpdatedAt time.Time
-	// Record deletion time
-	UserDeletedAt *time.Time
+	UserID                  uint64                   // primary key
+	UserAccount             string                   // account (ex: "john.doe@example.com")
+	UserNickname            string                   // nickname (ex: "John Doe")
+	UserAvatar              *string                  // avatar (ex: "https://example.com/avatar.jpg")
+	UserState               enum.UserState           // state (ex: 0-Locked, 1-Activated, 2-Not Activated)
+	UserPhone               *vo.Phone                // phone (ex: "0909090909")
+	UserGender              enum.Gender              // gender (ex: 0-Secret, 1-Male, 2-Female)
+	UserBirthday            *time.Time               // birthday (ex: 2000-01-01)
+	UserAuthenticationState enum.AuthenticationState // authentication state (ex: 0-Not Authenticated, 1-Pending, 2-Authenticated, 3-Failed)
+	UserCreatedAt           time.Time                // created at (ex: 2021-01-01 00:00:00)
+	UserUpdatedAt           time.Time                // updated at (ex: 2021-01-01 00:00:00)
+	UserDeletedAt           *time.Time               // deleted at (ex: 2021-01-01 00:00:00)
 }
 
 // NewUserInfo creates a new UserInfo domain entity with validation.

@@ -13,7 +13,21 @@ type transportationQueryHandler struct {
 	transportationQueryService transportationservice.TransportationQueryService
 }
 
-// GetListTrips implements TransportationQueryHandler.
+// @Summary Get trip detail
+// @Description Get trip detail
+// @Tags Transportation
+// @Accept json
+// @Produce json
+// @Param id path string true "Trip ID"
+// @Success 200 {object} response.ResponseData{data=transportationqueryresponse.GetTripDetailResponse}
+// @Failure 400 {object} response.ErrorResponseData
+// @Failure 408 {object} response.ErrorResponseData
+// @Failure 500 {object} response.ErrorResponseData
+// @Router /transportation/trip-detail/{id} [get]
+func (t *transportationQueryHandler) GetTripDetail(ctx *gin.Context) {
+	panic("unimplemented")
+}
+
 // @Summary Get list trips
 // @Description Get list trips
 // @Tags Transportation
@@ -23,7 +37,6 @@ type transportationQueryHandler struct {
 // @Param from_location  query string true "From location"
 // @Param to_location    query string true "To location"
 // @Param page           query int    false "Page number (default 1)"
-// @Param page_size      query int    false "Page size (default 10)"
 // @Success 200 {object} response.ResponseData{data=transportationqueryresponse.GetListTripsResponse}
 // @Failure 400 {object} response.ErrorResponseData
 // @Failure 408 {object} response.ErrorResponseData
