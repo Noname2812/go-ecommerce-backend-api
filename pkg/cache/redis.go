@@ -41,7 +41,7 @@ func NewRedis(config setting.RedisSetting, logger *logger.LoggerZap) *redis.Clie
 				Addr:     fmt.Sprintf("%s:%v", config.Host, config.Port),
 				Password: config.Password,
 				DB:       config.Database,
-				PoolSize: 10,
+				PoolSize: 50, // Increased from 10 to handle high concurrency
 			})
 
 			_, err := rdb.Ping(ctx).Result()
@@ -78,6 +78,7 @@ func InitRedisSentinel(config setting.RedisSentinelSetting, logger *logger.Logge
 		SentinelAddrs: config.SentinelAddrs,
 		DB:            config.Database, // Sử dụng database mặc định
 		Password:      config.Password, // Nếu Redis có mật khẩu, điền vào đây
+		PoolSize:      1000,
 	})
 
 	// Check the connection

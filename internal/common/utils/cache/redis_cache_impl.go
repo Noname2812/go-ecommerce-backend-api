@@ -154,9 +154,5 @@ func (s *sRedisCache) WithDistributedLock(ctx context.Context, key string, ttl t
 	}
 	defer lock.Release(ctx)
 
-	result, err := fn(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return result, nil
+	return fn(ctx)
 }

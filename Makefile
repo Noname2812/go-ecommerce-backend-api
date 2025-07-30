@@ -44,6 +44,7 @@ docker_build:
 docker_down:
 	docker-compose -f environment/docker-compose-dev.yml down
 	docker-compose -f environment/kafka/docker-compose-kafka-single.yml down
+	docker-compose -f environment/cluster-redis/docker-compose-cluster.yml down
 
 dev:
 	go run ./cmd/$(APP_NAME)
