@@ -71,37 +71,21 @@ func NewRedis(config setting.RedisSetting, logger *logger.LoggerZap) *redis.Clie
 	return rdb
 }
 
-// advanced
-func InitRedisSentinel() {
-	// rdb := redis.NewFailoverClient(&redis.FailoverOptions{
-	// 	MasterName:    "mymaster", // Tên master do Sentinel quản lý
-	// 	SentinelAddrs: []string{"127.0.0.1:26379", "127.0.0.1:26380", "127.0.0.1:26381"},
-	// 	DB:            0,        // Sử dụng database mặc định
-	// 	Password:      "123456", // Nếu Redis có mật khẩu, điền vào đây
-	// })
+// advanced redis sentinel
+func InitRedisSentinel(config setting.RedisSentinelSetting, logger *logger.LoggerZap) *redis.Client {
+	rdb := redis.NewFailoverClient(&redis.FailoverOptions{
+		MasterName:    config.MasterName, // Tên master do Sentinel quản lý
+		SentinelAddrs: config.SentinelAddrs,
+		DB:            config.Database, // Sử dụng database mặc định
+		Password:      config.Password, // Nếu Redis có mật khẩu, điền vào đây
+	})
 
-	// // Check the connection
-	// _, err := rdb.Ping(ctx).Result()
-	// if err != nil {
-	// 	log.Fatalf("Failed to connect to Redis Sentinel: %v", err)
-	// }
+	// Check the connection
+	_, err := rdb.Ping(ctx).Result()
+	if err != nil {
+		logger.Error("Failed to connect to Redis Sentinel", zap.Error(err))
+	}
 
-	// fmt.Println("Connected to Redis Sentinel successfully!")
-
-	// // Try setting and getting a value
-	// err = rdb.Set(ctx, "test_key", "Hello Redis Sentinel!", 0).Err()
-	// if err != nil {
-	// 	log.Fatalf("Error setting key: %v", err)
-	// }
-
-	// val, err := rdb.Get(ctx, "test_key").Result()
-	// if err != nil {
-	// 	log.Fatalf("Error getting key: %v", err)
-	// }
-
-	// fmt.Println("Value of test_key:", val)
-
-	// global.Logger.Info("Initializing RedisSentinel Successfully")
-	// global.Rdb = rdb
-	// redisExample()
+	logger.Info("Connected to Redis Sentinel successfully!")
+	return rdb
 }

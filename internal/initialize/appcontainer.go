@@ -30,7 +30,7 @@ func NewAppContainer(config *setting.Config) (*AppContainer, error) {
 
 	log := logger.NewLogger(config.Logger)
 	db := db.NewMySqlC(config.Mysql, log)
-	redisClient := redispkg.NewRedis(config.Redis, log)
+	redisClient := redispkg.InitRedisSentinel(config.RedisSentinel, log)
 	kafkaManager := kafka.NewManager(config.Kafka.Brokers, log.Logger)
 	GRPCServerManager := grpcserver.NewGRPCServerManager()
 	localCache, err := cache.NewRistrettoCache()

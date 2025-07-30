@@ -51,6 +51,7 @@ dev:
 docker_up:
 	docker-compose -f environment/kafka/docker-compose-kafka-single.yml up -d
 	docker-compose -f environment/docker-compose-dev.yml up -d
+	docker-compose -f environment/cluster-redis/docker-compose-cluster.yml up --build -d
 
 # Migration commands - Windows compatible
 up_by_one:

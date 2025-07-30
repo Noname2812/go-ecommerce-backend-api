@@ -1,14 +1,15 @@
 package setting
 
 type Config struct {
-	Server ServerSetting `mapstructure:"server"`
-	Mysql  MySQLSetting  `mapstructure:"mysql"`
-	Logger LoggerSetting `mapstructure:"logger"`
-	Redis  RedisSetting  `mapstructure:"redis"`
-	JWT    JWTSetting    `mapstructure:"jwt"`
-	GRPC   GRPCSettings  `mapstructure:"GRPC"`
-	Kafka  KafkaSetting  `mapstructure:"kafka"`
-	Email  EmailSetting  `mapstructure:"email"`
+	Server        ServerSetting        `mapstructure:"server"`
+	Mysql         MySQLSetting         `mapstructure:"mysql"`
+	Logger        LoggerSetting        `mapstructure:"logger"`
+	Redis         RedisSetting         `mapstructure:"redis"`
+	RedisSentinel RedisSentinelSetting `mapstructure:"redisSentinel"`
+	JWT           JWTSetting           `mapstructure:"jwt"`
+	GRPC          GRPCSettings         `mapstructure:"GRPC"`
+	Kafka         KafkaSetting         `mapstructure:"kafka"`
+	Email         EmailSetting         `mapstructure:"email"`
 }
 
 type EmailSetting struct {
@@ -37,6 +38,13 @@ type RedisSetting struct {
 	Port     int    `mapstructure:"port"`
 	Password string `mapstructure:"password"`
 	Database int    `mapstructure:"database"`
+}
+
+type RedisSentinelSetting struct {
+	MasterName    string   `mapstructure:"masterName"`
+	SentinelAddrs []string `mapstructure:"sentinelAddrs"`
+	Password      string   `mapstructure:"password"`
+	Database      int      `mapstructure:"database"`
 }
 
 type MySQLSetting struct {
