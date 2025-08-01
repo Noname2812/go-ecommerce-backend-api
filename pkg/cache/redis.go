@@ -78,7 +78,6 @@ func InitRedisSentinel(config setting.RedisSentinelSetting, logger *logger.Logge
 		SentinelAddrs: config.SentinelAddrs,
 		DB:            config.Database, // Sử dụng database mặc định
 		Password:      config.Password, // Nếu Redis có mật khẩu, điền vào đây
-		PoolSize:      1000,
 	})
 
 	// Check the connection

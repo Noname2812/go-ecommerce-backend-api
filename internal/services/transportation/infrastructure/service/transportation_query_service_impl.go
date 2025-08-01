@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/rand"
+	"sync"
 	"time"
 
 	cacheservice "github.com/Noname2812/go-ecommerce-backend-api/internal/common/utils/cache"
@@ -12,6 +13,7 @@ import (
 	transportationqueryresponse "github.com/Noname2812/go-ecommerce-backend-api/internal/services/transportation/application/query/dto/response"
 	transportationservice "github.com/Noname2812/go-ecommerce-backend-api/internal/services/transportation/application/service"
 	transportationconsts "github.com/Noname2812/go-ecommerce-backend-api/internal/services/transportation/consts"
+	transportationmodel "github.com/Noname2812/go-ecommerce-backend-api/internal/services/transportation/domain/model"
 	transportationrepository "github.com/Noname2812/go-ecommerce-backend-api/internal/services/transportation/domain/repository"
 	transportationmapper "github.com/Noname2812/go-ecommerce-backend-api/internal/services/transportation/infrastructure/mapper"
 	"github.com/Noname2812/go-ecommerce-backend-api/pkg/response"
@@ -50,7 +52,7 @@ func (t *transportationQueryService) GetListTrips(ctx context.Context, request *
 	if trips != nil {
 		// Cache warming: save to local cache for next requests
 		go func() {
-			_ = t.localCacheService.SetWithTTL(context.Background(), key, trips, transportationconsts.TRIPS_KEY_LOCAL_TTL)
+			_ = t.localCacheService.SetWithTTL(ctx, key, trips, transportationconsts.TRIPS_KEY_LOCAL_TTL)
 		}()
 		return response.ErrCodeSuccess, trips, nil
 	}
@@ -64,36 +66,19 @@ func (t *transportationQueryService) GetListTrips(ctx context.Context, request *
 
 			return nil, nil // Data already cached by another process
 		}
-
 		// Query database
-		departureDate, err := time.Parse(time.DateOnly, request.DepartureDate)
+		response, err := t.getTripsAndCountFromDB(ctx, request)
 		if err != nil {
-			t.logger.Error("parse departure date failed", zap.Error(err), zap.String("departureDate", request.DepartureDate))
+			t.logger.Error("get trips and count from db failed", zap.Error(err))
 			return nil, err
-		}
-
-		data, err := t.transportationRepo.GetListTrips(ctx, departureDate, request.FromLocation, request.ToLocation, request.Page)
-		if err != nil {
-			t.logger.Error("get list trips failed", zap.Error(err), zap.String("departureDate", request.DepartureDate), zap.String("fromLocation", request.FromLocation), zap.String("toLocation", request.ToLocation))
-			return nil, err
-		}
-		count, err := t.transportationRepo.GetListTripsCount(ctx, departureDate, request.FromLocation, request.ToLocation)
-		if err != nil {
-			t.logger.Error("get list trips count failed", zap.Error(err), zap.String("departureDate", request.DepartureDate), zap.String("fromLocation", request.FromLocation), zap.String("toLocation", request.ToLocation))
-			return nil, err
-		}
-
-		response := &transportationqueryresponse.GetListTripsResponse{
-			Trips: make([]transportationqueryresponse.Trip, len(data)),
-			Total: count,
-			Page:  request.Page,
-		}
-		for i, trip := range data {
-			response.Trips[i] = transportationmapper.TripToResponse(trip)
 		}
 
 		// save the data to the cache
-		t.saveCache(key, response)
+		err = t.saveCache(ctx, key, response)
+		if err != nil {
+			t.logger.Error("save cache failed", zap.Error(err), zap.String("key", key))
+			return nil, err
+		}
 		t.logger.Info("save cache success", zap.String("key", key))
 		return response, nil
 	})
@@ -197,15 +182,87 @@ func (t *transportationQueryService) getListTripsFromRedisCache(ctx context.Cont
 }
 
 // save cache to local cache and redis cache
-func (t *transportationQueryService) saveCache(key string, trips *transportationqueryresponse.GetListTripsResponse) {
+func (t *transportationQueryService) saveCache(ctx context.Context, key string, trips *transportationqueryresponse.GetListTripsResponse) error {
+	var wg sync.WaitGroup
+	errCh := make(chan error, 2)
+
+	wg.Add(2)
+
 	go func() {
-		saveCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		_ = t.localCacheService.SetWithTTL(saveCtx, key, trips, transportationconsts.TRIPS_KEY_LOCAL_TTL)
+		defer wg.Done()
+		if err := t.localCacheService.SetWithTTL(ctx, key, trips, transportationconsts.TRIPS_KEY_LOCAL_TTL); !err {
+			errCh <- fmt.Errorf("local cache set failed")
+		}
 	}()
+
 	go func() {
-		saveCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		_ = t.redisCacheService.Set(saveCtx, key, trips, transportationconsts.TRIPS_KEY_REDIS_TTL)
+		defer wg.Done()
+		if err := t.redisCacheService.Set(ctx, key, trips, transportationconsts.TRIPS_KEY_REDIS_TTL); err != nil {
+			errCh <- fmt.Errorf("redis cache set failed: %w", err)
+		}
 	}()
+
+	wg.Wait()
+	close(errCh)
+
+	for err := range errCh {
+		t.logger.Error("save cache failed", zap.Error(err))
+	}
+
+	if len(errCh) > 0 {
+		return fmt.Errorf("save cache failed with errors: %v", errCh)
+	}
+	return nil
+}
+
+func (t *transportationQueryService) getTripsAndCountFromDB(ctx context.Context, request *transportationqueryrequest.GetListTripsRequest) (*transportationqueryresponse.GetListTripsResponse, error) {
+	departureDate, err := time.Parse(time.DateOnly, request.DepartureDate)
+	if err != nil {
+		t.logger.Error("parse departure date failed", zap.Error(err), zap.String("departureDate", request.DepartureDate))
+		return nil, err
+	}
+
+	var (
+		tripsData []transportationmodel.Trip
+		count     int
+		queryErr  error
+		countErr  error
+		wg        sync.WaitGroup
+	)
+
+	wg.Add(2)
+
+	// Query trips
+	go func() {
+		defer wg.Done()
+		tripsData, queryErr = t.transportationRepo.GetListTrips(ctx, departureDate, request.FromLocation, request.ToLocation, request.Page)
+	}()
+
+	// Query count
+	go func() {
+		defer wg.Done()
+		count, countErr = t.transportationRepo.GetListTripsCount(ctx, departureDate, request.FromLocation, request.ToLocation)
+	}()
+
+	wg.Wait()
+
+	if queryErr != nil {
+		t.logger.Error("get list trips failed", zap.Error(queryErr))
+		return nil, queryErr
+	}
+	if countErr != nil {
+		t.logger.Error("get list trips count failed", zap.Error(countErr))
+		return nil, countErr
+	}
+
+	// map response
+	response := &transportationqueryresponse.GetListTripsResponse{
+		Trips: make([]transportationqueryresponse.Trip, len(tripsData)),
+		Total: count,
+		Page:  request.Page,
+	}
+	for i, trip := range tripsData {
+		response.Trips[i] = transportationmapper.TripToResponse(trip)
+	}
+	return response, nil
 }
