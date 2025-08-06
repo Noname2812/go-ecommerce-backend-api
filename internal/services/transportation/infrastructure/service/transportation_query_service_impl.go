@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"sync"
 	"time"
 
 	"github.com/Noname2812/go-ecommerce-backend-api/internal/common/utils"
@@ -37,24 +36,25 @@ func (t *transportationQueryService) GetTripDetail(ctx context.Context, id uint6
 	}
 	key := fmt.Sprintf(transportationconsts.TRIP_DETAIL_KEY, id)
 	// 1. get trip detail from local cache
-	value, isFound := t.localCacheService.Get(ctx, key)
-	if isFound {
-		res, ok := value.(*transportationqueryresponse.TripDetailResponse)
-		if !ok {
-			t.logger.Error("local cache item with key is not TripDetailResponse", zap.String("key", key))
-			t.localCacheService.Del(ctx, key)
-			return response.ErrServerError, nil, fmt.Errorf("local cache item with key %s is not TripDetailResponse", key)
-		}
-		return response.ErrCodeSuccess, res, nil
+	detail, err := t.getTripDetailFromLocalCache(ctx, key)
+	if err != nil {
+		return response.ErrServerError, nil, err
+	}
+	if detail != nil {
+		return response.ErrCodeSuccess, detail, nil
 	}
 	// 2. get trip detail from redis cache or db
 	lockKey := fmt.Sprintf("lock:%s", key)
 	result, err := t.redisCacheService.WithDistributedLock(ctx, lockKey, transportationconsts.TRIPS_LOCK_TTL_SECONDS, func(ctx context.Context) (interface{}, error) {
 		// Double-check cache after acquiring lock
-		value, isFound := t.localCacheService.Get(ctx, key)
-		if isFound {
-			return value, nil // Data already cached by another process
+		cache, err := t.getTripDetailFromLocalCache(ctx, key)
+		if err != nil {
+			return nil, err
 		}
+		if cache != nil {
+			return detail, nil
+		}
+
 		var (
 			detail *transportationqueryresponse.TripDetailResponse
 			seats  []transportationqueryresponse.Seat
@@ -129,14 +129,11 @@ func (t *transportationQueryService) GetListTrips(ctx context.Context, request *
 	key := fmt.Sprintf(transportationconsts.TRIPS_KEY, request.FromLocation, request.ToLocation, request.DepartureDate, request.Page)
 
 	// 1. get data from local cache first
-	value, isFound := t.localCacheService.Get(ctx, key)
-	if isFound {
-		tripsLocal, ok := value.(*transportationqueryresponse.GetListTripsResponse)
-		if !ok {
-			t.logger.Error("local cache item with key is not GetListTripsResponse", zap.String("key", key))
-			t.localCacheService.Del(ctx, key)
-			return response.ErrServerError, nil, fmt.Errorf("local cache item with key %s is not GetListTripsResponse", key)
-		}
+	tripsLocal, err := t.getListTripsFromLocalCache(ctx, key)
+	if err != nil {
+		return response.ErrServerError, nil, err
+	}
+	if tripsLocal != nil {
 		return response.ErrCodeSuccess, tripsLocal, nil
 	}
 
@@ -158,10 +155,14 @@ func (t *transportationQueryService) GetListTrips(ctx context.Context, request *
 	lockKey := fmt.Sprintf("lock:%s", key)
 	result, err := t.redisCacheService.WithDistributedLock(ctx, lockKey, transportationconsts.TRIPS_LOCK_TTL_SECONDS, func(ctx context.Context) (interface{}, error) {
 		// Double-check cache after acquiring lock
-		exists, err := t.redisCacheService.Exists(ctx, key)
-		if err == nil && exists {
-			return nil, nil // Data already cached by another process
+		tripsLocal, err := t.getListTripsFromLocalCache(ctx, key)
+		if err != nil {
+			return nil, err
 		}
+		if tripsLocal != nil {
+			return tripsLocal, nil
+		}
+
 		// Query database
 		response, err := t.getTripsAndCountFromDB(ctx, request)
 		if err != nil {
@@ -248,42 +249,56 @@ func (t *transportationQueryService) getListTripsFromRedisCache(ctx context.Cont
 	return trips, nil
 }
 
+// get list trips from local cache
+func (t *transportationQueryService) getListTripsFromLocalCache(ctx context.Context, key string) (*transportationqueryresponse.GetListTripsResponse, error) {
+	value, isFound := t.localCacheService.Get(ctx, key)
+	if !isFound {
+		return nil, nil
+	}
+	trips, ok := value.(*transportationqueryresponse.GetListTripsResponse)
+	if !ok {
+		t.logger.Error("local cache item with key is not GetListTripsResponse", zap.String("key", key))
+		t.localCacheService.Del(ctx, key)
+		return nil, fmt.Errorf("local cache item with key %s is not GetListTripsResponse", key)
+	}
+	return trips, nil
+}
+
 // save cache to local cache and redis cache
 func (t *transportationQueryService) saveListTripsToRedisCache(ctx context.Context, key string, trips *transportationqueryresponse.GetListTripsResponse) error {
-	var wg sync.WaitGroup
-	errCh := make(chan error, 2)
+	g, ctx := errgroup.WithContext(ctx)
 
-	wg.Add(2)
-
-	go func() {
-		defer wg.Done()
-		if err := t.localCacheService.SetWithTTL(ctx, key, trips, transportationconsts.TRIPS_KEY_LOCAL_TTL); !err {
-			errCh <- fmt.Errorf("local cache set failed")
+	// Save to local cache
+	g.Go(func() error {
+		if ok := t.localCacheService.SetWithTTL(ctx, key, trips, transportationconsts.TRIPS_KEY_LOCAL_TTL); !ok {
+			err := fmt.Errorf("local cache set failed")
+			t.logger.Error("save local cache failed", zap.Error(err))
+			return err
 		}
-	}()
+		return nil
+	})
 
-	go func() {
-		defer wg.Done()
+	// Save to Redis cache
+	g.Go(func() error {
 		if err := t.redisCacheService.Set(ctx, key, trips, transportationconsts.TRIPS_KEY_REDIS_TTL); err != nil {
-			errCh <- fmt.Errorf("redis cache set failed: %w", err)
+			errWrapped := fmt.Errorf("redis cache set failed: %w", err)
+			t.logger.Error("save redis cache failed", zap.Error(errWrapped))
+			return errWrapped
 		}
-	}()
+		return nil
+	})
 
-	wg.Wait()
-	close(errCh)
-
-	for err := range errCh {
-		t.logger.Error("save cache failed", zap.Error(err))
+	// Wait for both
+	if err := g.Wait(); err != nil {
+		return fmt.Errorf("save cache failed: %w", err)
 	}
 
-	if len(errCh) > 0 {
-		return fmt.Errorf("save cache failed with errors: %v", errCh)
-	}
 	return nil
 }
 
 // get trips and count from db
 func (t *transportationQueryService) getTripsAndCountFromDB(ctx context.Context, request *transportationqueryrequest.GetListTripsRequest) (*transportationqueryresponse.GetListTripsResponse, error) {
+	// Parse departure date
 	departureDate, err := time.Parse(time.DateOnly, request.DepartureDate)
 	if err != nil {
 		t.logger.Error("parse departure date failed", zap.Error(err), zap.String("departureDate", request.DepartureDate))
@@ -293,37 +308,37 @@ func (t *transportationQueryService) getTripsAndCountFromDB(ctx context.Context,
 	var (
 		tripsData []transportationmodel.Trip
 		count     int
-		queryErr  error
-		countErr  error
-		wg        sync.WaitGroup
 	)
 
-	wg.Add(2)
+	// Create errgroup with context
+	g, ctx := errgroup.WithContext(ctx)
 
 	// Query trips
-	go func() {
-		defer wg.Done()
-		tripsData, queryErr = t.tripRepo.GetListTrips(ctx, departureDate, request.FromLocation, request.ToLocation, request.Page)
-	}()
+	g.Go(func() error {
+		var err error
+		tripsData, err = t.tripRepo.GetListTrips(ctx, departureDate, request.FromLocation, request.ToLocation, request.Page)
+		if err != nil {
+			t.logger.Error("get list trips failed", zap.Error(err))
+		}
+		return err
+	})
 
 	// Query count
-	go func() {
-		defer wg.Done()
-		count, countErr = t.tripRepo.GetListTripsCount(ctx, departureDate, request.FromLocation, request.ToLocation)
-	}()
+	g.Go(func() error {
+		var err error
+		count, err = t.tripRepo.GetListTripsCount(ctx, departureDate, request.FromLocation, request.ToLocation)
+		if err != nil {
+			t.logger.Error("get list trips count failed", zap.Error(err))
+		}
+		return err
+	})
 
-	wg.Wait()
-
-	if queryErr != nil {
-		t.logger.Error("get list trips failed", zap.Error(queryErr))
-		return nil, queryErr
-	}
-	if countErr != nil {
-		t.logger.Error("get list trips count failed", zap.Error(countErr))
-		return nil, countErr
+	// Wait for both goroutines
+	if err := g.Wait(); err != nil {
+		return nil, err
 	}
 
-	// map response
+	// Map to response
 	response := &transportationqueryresponse.GetListTripsResponse{
 		Trips: make([]transportationqueryresponse.Trip, len(tripsData)),
 		Total: count,
@@ -332,6 +347,7 @@ func (t *transportationQueryService) getTripsAndCountFromDB(ctx context.Context,
 	for i, trip := range tripsData {
 		response.Trips[i] = *transportationmapper.TripItemToResponse(&trip)
 	}
+
 	return response, nil
 }
 
@@ -438,4 +454,19 @@ func (t *transportationQueryService) saveSeatsToRedisCache(ctx context.Context, 
 	}
 
 	return nil
+}
+
+// get seat detail from local cache
+func (t *transportationQueryService) getTripDetailFromLocalCache(ctx context.Context, key string) (*transportationqueryresponse.TripDetailResponse, error) {
+	value, isFound := t.localCacheService.Get(ctx, key)
+	if !isFound {
+		return nil, nil
+	}
+	detail, ok := value.(*transportationqueryresponse.TripDetailResponse)
+	if !ok {
+		t.logger.Error("local cache item with key is not TripDetailResponse", zap.String("key", key))
+		t.localCacheService.Del(ctx, key)
+		return nil, fmt.Errorf("local cache item with key %s is not TripDetailResponse", key)
+	}
+	return detail, nil
 }
