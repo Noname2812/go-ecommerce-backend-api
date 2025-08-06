@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 
+	commonenum "github.com/Noname2812/go-ecommerce-backend-api/internal/common/enum"
 	"github.com/Noname2812/go-ecommerce-backend-api/internal/database"
 	transportationmodel "github.com/Noname2812/go-ecommerce-backend-api/internal/services/transportation/domain/model"
 	transportationrepository "github.com/Noname2812/go-ecommerce-backend-api/internal/services/transportation/domain/repository"
@@ -15,13 +16,40 @@ type seatRepository struct {
 	db   *sql.DB
 }
 
+// GetListSeatsByBusId implements transportationrepository.SeatRepository.
+func (t *seatRepository) GetListSeatsByBusId(ctx context.Context, busId uint64) ([]transportationmodel.Seat, error) {
+	txQueries := t.getSeatQueries(ctx)
+	seats, err := txQueries.GetListSeatsByBusId(ctx, int32(busId))
+	if err != nil {
+		return nil, err
+	}
+
+	// map response
+	response := make([]transportationmodel.Seat, len(seats))
+	for i, seat := range seats {
+		response[i] = transportationmodel.Seat{
+			SeatId:       uint64(seat.SeatID),
+			BusId:        uint64(seat.BusID),
+			SeatNumber:   seat.SeatNumber,
+			SeatRowNo:    uint8(seat.SeatRowNo),
+			SeatColumnNo: uint8(seat.SeatColumnNo),
+			SeatFloorNo:  uint8(seat.SeatFloorNo),
+			SeatType:     commonenum.SeatType(seat.SeatType),
+		}
+	}
+	return response, nil
+}
+
 // CreateSeat implements transportationrepository.SeatRepository.
 func (t *seatRepository) CreateSeat(ctx context.Context, model *transportationmodel.Seat) (uint64, error) {
 	txQueries := t.getSeatQueries(ctx)
 	data := &database.AddSeatParams{
 		BusID:         int32(model.BusId),
 		SeatNumber:    model.SeatNumber,
-		IsAvailable:   sql.NullBool{Bool: true, Valid: true},
+		SeatRowNo:     uint8(model.SeatRowNo),
+		SeatColumnNo:  uint8(model.SeatColumnNo),
+		SeatFloorNo:   uint8(model.SeatFloorNo),
+		SeatType:      uint8(model.SeatType),
 		SeatCreatedAt: sql.NullTime{Time: model.SeatCreatedAt, Valid: true},
 		SeatUpdatedAt: sql.NullTime{Time: model.SeatUpdatedAt, Valid: true},
 	}
@@ -59,7 +87,10 @@ func (t *seatRepository) GetSeatById(ctx context.Context, SeatId uint32) (*trans
 		SeatId:        uint64(result.SeatID),
 		BusId:         uint64(result.BusID),
 		SeatNumber:    result.SeatNumber,
-		SeatAvailable: result.IsAvailable.Bool,
+		SeatRowNo:     uint8(result.SeatRowNo),
+		SeatColumnNo:  uint8(result.SeatColumnNo),
+		SeatFloorNo:   uint8(result.SeatFloorNo),
+		SeatType:      commonenum.SeatType(result.SeatType),
 		SeatCreatedAt: result.SeatCreatedAt.Time,
 		SeatUpdatedAt: result.SeatUpdatedAt.Time,
 	}, nil
@@ -70,7 +101,10 @@ func (t *seatRepository) UpdateSeat(ctx context.Context, model *transportationmo
 	txQueries := t.getSeatQueries(ctx)
 	params := &database.UpdateSeatParams{
 		SeatNumber:    model.SeatNumber,
-		IsAvailable:   sql.NullBool{Bool: model.SeatAvailable, Valid: true},
+		SeatRowNo:     uint8(model.SeatRowNo),
+		SeatColumnNo:  uint8(model.SeatColumnNo),
+		SeatFloorNo:   uint8(model.SeatFloorNo),
+		SeatType:      uint8(model.SeatType),
 		SeatID:        int32(model.SeatId),
 		BusID:         int32(model.BusId),
 		SeatUpdatedAt: sql.NullTime{Time: model.SeatUpdatedAt, Valid: true},

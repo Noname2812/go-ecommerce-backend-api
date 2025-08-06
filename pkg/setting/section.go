@@ -28,9 +28,10 @@ type GRPCSettings struct {
 }
 
 type ServerSetting struct {
-	Port int    `mapstructure:"port"`
-	Mode string `mapstructure:"mode"`
-	Host string `mapstructure:"host"`
+	Port              int    `mapstructure:"port"`
+	Mode              string `mapstructure:"mode"`
+	Host              string `mapstructure:"host"`
+	MaxRequestTimeout int    `mapstructure:"MAX_REQUEST_TIMEOUT"`
 }
 
 type RedisSetting struct {

@@ -25,7 +25,22 @@ type transportationQueryHandler struct {
 // @Failure 500 {object} response.ErrorResponseData
 // @Router /transportation/trip-detail/{id} [get]
 func (t *transportationQueryHandler) GetTripDetail(ctx *gin.Context) {
-	panic("unimplemented")
+	id := ctx.Param("id")
+	idUint, err := strconv.ParseUint(id, 10, 32)
+	if err != nil {
+		response.ErrorResponse(ctx, response.ErrCodeParamInvalid, "", map[string]string{"id": "invalid id"})
+		return
+	}
+
+	// call service
+	code, data, err := t.transportationQueryService.GetTripDetail(ctx, uint64(idUint))
+	if err != nil {
+		response.ErrorResponse(ctx, code, err.Error(), nil)
+		return
+	}
+
+	// response
+	response.SuccessResponse(ctx, code, data)
 }
 
 // @Summary Get list trips

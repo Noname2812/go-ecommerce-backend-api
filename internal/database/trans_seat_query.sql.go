@@ -12,16 +12,19 @@ import (
 
 const addSeat = `-- name: AddSeat :execresult
 INSERT INTO seats (
-    bus_id, seat_number, is_available, seat_created_at, seat_updated_at
+    bus_id, seat_number, seat_row_no, seat_column_no, seat_floor_no, seat_type, seat_created_at, seat_updated_at
 ) VALUES (
-    ?, ?, ?, ?, ?
+    ?, ?, ?, ?, ?, ?, ?, ?
 )
 `
 
 type AddSeatParams struct {
 	BusID         int32
 	SeatNumber    string
-	IsAvailable   sql.NullBool
+	SeatRowNo     uint8
+	SeatColumnNo  uint8
+	SeatFloorNo   uint8
+	SeatType      uint8
 	SeatCreatedAt sql.NullTime
 	SeatUpdatedAt sql.NullTime
 }
@@ -30,7 +33,10 @@ func (q *Queries) AddSeat(ctx context.Context, arg AddSeatParams) (sql.Result, e
 	return q.db.ExecContext(ctx, addSeat,
 		arg.BusID,
 		arg.SeatNumber,
-		arg.IsAvailable,
+		arg.SeatRowNo,
+		arg.SeatColumnNo,
+		arg.SeatFloorNo,
+		arg.SeatType,
 		arg.SeatCreatedAt,
 		arg.SeatUpdatedAt,
 	)
@@ -56,8 +62,55 @@ func (q *Queries) DeleteSeat(ctx context.Context, seatID int32) error {
 	return err
 }
 
+const getListSeatsByBusId = `-- name: GetListSeatsByBusId :many
+SELECT seat_id, bus_id, seat_number, seat_row_no, seat_column_no, seat_floor_no, seat_type
+FROM seats
+WHERE bus_id = ? AND seat_deleted_at IS NULL
+`
+
+type GetListSeatsByBusIdRow struct {
+	SeatID       int32
+	BusID        int32
+	SeatNumber   string
+	SeatRowNo    uint8
+	SeatColumnNo uint8
+	SeatFloorNo  uint8
+	SeatType     uint8
+}
+
+func (q *Queries) GetListSeatsByBusId(ctx context.Context, busID int32) ([]GetListSeatsByBusIdRow, error) {
+	rows, err := q.db.QueryContext(ctx, getListSeatsByBusId, busID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetListSeatsByBusIdRow
+	for rows.Next() {
+		var i GetListSeatsByBusIdRow
+		if err := rows.Scan(
+			&i.SeatID,
+			&i.BusID,
+			&i.SeatNumber,
+			&i.SeatRowNo,
+			&i.SeatColumnNo,
+			&i.SeatFloorNo,
+			&i.SeatType,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getSeatById = `-- name: GetSeatById :one
-SELECT seat_id, bus_id, seat_number, is_available, seat_created_at, seat_updated_at, seat_deleted_at
+SELECT seat_id, bus_id, seat_number, seat_row_no, seat_column_no, seat_floor_no, seat_type, seat_created_at, seat_updated_at, seat_deleted_at
 FROM ` + "`" + `seats` + "`" + `
 WHERE seat_id = ?
 `
@@ -69,7 +122,10 @@ func (q *Queries) GetSeatById(ctx context.Context, seatID int32) (Seat, error) {
 		&i.SeatID,
 		&i.BusID,
 		&i.SeatNumber,
-		&i.IsAvailable,
+		&i.SeatRowNo,
+		&i.SeatColumnNo,
+		&i.SeatFloorNo,
+		&i.SeatType,
 		&i.SeatCreatedAt,
 		&i.SeatUpdatedAt,
 		&i.SeatDeletedAt,
@@ -79,13 +135,16 @@ func (q *Queries) GetSeatById(ctx context.Context, seatID int32) (Seat, error) {
 
 const updateSeat = `-- name: UpdateSeat :execrows
 UPDATE seats
-SET seat_updated_at = NOW(), seat_number = ?, is_available = ?
+SET seat_updated_at = NOW(), seat_number = ?, seat_row_no = ?, seat_column_no = ?, seat_floor_no = ?, seat_type = ?
 WHERE seat_id = ? AND seat_updated_at = ? AND bus_id = ? AND seat_deleted_at IS NULL
 `
 
 type UpdateSeatParams struct {
 	SeatNumber    string
-	IsAvailable   sql.NullBool
+	SeatRowNo     uint8
+	SeatColumnNo  uint8
+	SeatFloorNo   uint8
+	SeatType      uint8
 	SeatID        int32
 	SeatUpdatedAt sql.NullTime
 	BusID         int32
@@ -94,7 +153,10 @@ type UpdateSeatParams struct {
 func (q *Queries) UpdateSeat(ctx context.Context, arg UpdateSeatParams) (int64, error) {
 	result, err := q.db.ExecContext(ctx, updateSeat,
 		arg.SeatNumber,
-		arg.IsAvailable,
+		arg.SeatRowNo,
+		arg.SeatColumnNo,
+		arg.SeatFloorNo,
+		arg.SeatType,
 		arg.SeatID,
 		arg.SeatUpdatedAt,
 		arg.BusID,

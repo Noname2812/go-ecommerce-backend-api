@@ -32,5 +32,5 @@ type RedisCache interface {
 	// Atomically set field if not exists (useful for holding a seat)
 	HSetNX(ctx context.Context, key string, field string, value interface{}) (bool, error)
 	// Run Lua script for atomic operations (e.g., hold seat with TTL or cleanup expired holds)
-	Eval(ctx context.Context, script string, keys []string, args ...interface{}) (interface{}, error)
+	Eval(ctx context.Context, script string, keys []string, args ...interface{}) (int64, error)
 }

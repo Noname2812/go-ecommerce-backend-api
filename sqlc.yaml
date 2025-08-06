@@ -7,3 +7,10 @@ sql:
       go:
         package: "database"
         out: "internal/database"
+        overrides:
+          - db_type: "json"
+            go_type: "encoding/json.RawMessage"
+          - db_type: "text"
+            go_type: "encoding/json.RawMessage"
+          - db_type: "longtext"
+            go_type: "encoding/json.RawMessage"

@@ -36,3 +36,20 @@ SELECT COUNT(trip_id)
 FROM trips
 JOIN routes ON trips.route_id = routes.route_id 
 WHERE trips.trip_departure_time >= ? AND routes.route_start_location = ? AND routes.route_end_location = ? AND trips.trip_deleted_at IS NULL;
+
+-- name: GetTripDetail :one
+SELECT trips.trip_id, 
+    routes.route_id,
+    routes.route_start_location, 
+    routes.route_end_location, 
+    trips.trip_departure_time, 
+    trips.trip_arrival_time, 
+    trips.trip_base_price,
+    buses.bus_license_plate, 
+    buses.bus_company, 
+    buses.bus_capacity,
+    buses.bus_id
+FROM trips
+JOIN routes ON trips.route_id = routes.route_id 
+JOIN buses ON trips.bus_id = buses.bus_id
+WHERE trips.trip_id = ? AND trips.trip_deleted_at IS NULL;

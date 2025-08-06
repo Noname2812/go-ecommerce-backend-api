@@ -19,12 +19,12 @@ type sRedisCache struct {
 
 // Eval implements RedisCache.
 // Run a Lua script in Redis for atomic operations
-func (s *sRedisCache) Eval(ctx context.Context, script string, keys []string, args ...interface{}) (interface{}, error) {
+func (s *sRedisCache) Eval(ctx context.Context, script string, keys []string, args ...interface{}) (int64, error) {
 	result, err := s.client.Eval(ctx, script, keys, args...).Result()
 	if err != nil {
-		return nil, fmt.Errorf("redis eval error: %w", err)
+		return 0, fmt.Errorf("redis eval error: %w", err)
 	}
-	return result, nil
+	return result.(int64), nil
 }
 
 // HDel implements RedisCache.

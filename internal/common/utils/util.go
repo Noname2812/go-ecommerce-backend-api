@@ -1,9 +1,11 @@
 package utils
 
 import (
+	"context"
 	"crypto/sha1"
 	"database/sql"
 	"fmt"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -145,4 +147,37 @@ func isZeroValue(v reflect.Value) bool {
 	default:
 		return v.IsZero()
 	}
+}
+
+// retry with exponential backoff
+func RetryWithExponentialBackoff(ctx context.Context, retries int, baseDelay time.Duration, getCache func() (interface{}, error)) (interface{}, error) {
+	for i := 0; i < retries; i++ {
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		default:
+		}
+
+		cache, err := getCache()
+		if err != nil {
+			return nil, err
+		}
+		if cache != nil {
+			return cache, nil
+		}
+
+		if i == retries-1 {
+			break
+		}
+
+		// exponential backoff with jitter
+		jitter := time.Duration(rand.Int63n(int64(baseDelay)))
+		backoffDelay := baseDelay*time.Duration(1<<i) + jitter
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-time.After(backoffDelay):
+		}
+	}
+	return nil, fmt.Errorf("exceeded max retries: %d", retries)
 }

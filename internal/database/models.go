@@ -192,7 +192,7 @@ type NotificationLog struct {
 	NotificationType         string
 	NotificationRecipient    string
 	NotificationSubject      sql.NullString
-	NotificationContent      string
+	NotificationContent      json.RawMessage
 	NotificationStatus       int8
 	NotificationErrorMessage sql.NullString
 	NotificationSentAt       sql.NullTime
@@ -248,7 +248,10 @@ type Seat struct {
 	SeatID        int32
 	BusID         int32
 	SeatNumber    string
-	IsAvailable   sql.NullBool
+	SeatRowNo     uint8
+	SeatColumnNo  uint8
+	SeatFloorNo   uint8
+	SeatType      uint8
 	SeatCreatedAt sql.NullTime
 	SeatUpdatedAt sql.NullTime
 	SeatDeletedAt sql.NullTime
@@ -331,13 +334,13 @@ type Trip struct {
 
 // Table to control seat status
 type TripSeatLock struct {
-	TripSeatLockID         int64
-	TripID                 int64
-	TripSeatLockSeatNumber string
-	LockedByBookingID      sql.NullInt64
-	TripSeatLockStatus     int8
-	TripSeatLockExpiresAt  sql.NullTime
-	TripSeatLockCreatedAt  sql.NullTime
-	TripSeatLockUpdatedAt  sql.NullTime
-	TripSeatLockDeletedAt  sql.NullTime
+	TripSeatLockID        int64
+	TripID                int64
+	SeatID                int64
+	LockedByBookingID     sql.NullInt64
+	TripSeatLockStatus    uint8
+	TripSeatLockExpiresAt sql.NullTime
+	TripSeatLockCreatedAt sql.NullTime
+	TripSeatLockUpdatedAt sql.NullTime
+	TripSeatLockDeletedAt sql.NullTime
 }

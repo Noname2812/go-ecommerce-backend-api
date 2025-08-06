@@ -22,13 +22,15 @@ import (
 
 func InitTransportationQueryHandler(db *sql.DB, rdb *redis.Client, localCache *ristretto.Cache, logger *zap.Logger) transportationqueryhandler.TransportationQueryHandler {
 	tripRepository := transportationrepositoryimpl.NewTripRepository(db)
+	seatRepository := transportationrepositoryimpl.NewSeatRepository(db)
+	tripSeatLockRepository := transportationrepositoryimpl.NewTripSeatLockRepository(db)
 	redisCache := cacheservice.NewRedisCache(rdb)
 	cacheserviceLocalCache := cacheservice.NewLocalCache(localCache)
-	transportationQueryService := transportationserviceimpl.NewTransportationQueryService(tripRepository, redisCache, cacheserviceLocalCache, logger)
+	transportationQueryService := transportationserviceimpl.NewTransportationQueryService(tripRepository, seatRepository, tripSeatLockRepository, redisCache, cacheserviceLocalCache, logger)
 	transportationQueryHandler := transportationqueryhandler.NewTransportationQueryHandler(transportationQueryService)
 	return transportationQueryHandler
 }
 
 // transportation_wire.go:
 
-var TransportationRepositorySet = wire.NewSet(transportationrepositoryimpl.NewTripRepository)
+var TransportationRepositorySet = wire.NewSet(transportationrepositoryimpl.NewTripRepository, transportationrepositoryimpl.NewSeatRepository, transportationrepositoryimpl.NewTripSeatLockRepository)

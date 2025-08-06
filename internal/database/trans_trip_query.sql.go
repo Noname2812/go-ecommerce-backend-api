@@ -160,6 +160,57 @@ func (q *Queries) GetTripById(ctx context.Context, tripID int64) (Trip, error) {
 	return i, err
 }
 
+const getTripDetail = `-- name: GetTripDetail :one
+SELECT trips.trip_id, 
+    routes.route_id,
+    routes.route_start_location, 
+    routes.route_end_location, 
+    trips.trip_departure_time, 
+    trips.trip_arrival_time, 
+    trips.trip_base_price,
+    buses.bus_license_plate, 
+    buses.bus_company, 
+    buses.bus_capacity,
+    buses.bus_id
+FROM trips
+JOIN routes ON trips.route_id = routes.route_id 
+JOIN buses ON trips.bus_id = buses.bus_id
+WHERE trips.trip_id = ? AND trips.trip_deleted_at IS NULL
+`
+
+type GetTripDetailRow struct {
+	TripID             int64
+	RouteID            int32
+	RouteStartLocation string
+	RouteEndLocation   string
+	TripDepartureTime  time.Time
+	TripArrivalTime    time.Time
+	TripBasePrice      string
+	BusLicensePlate    string
+	BusCompany         string
+	BusCapacity        int32
+	BusID              int32
+}
+
+func (q *Queries) GetTripDetail(ctx context.Context, tripID int64) (GetTripDetailRow, error) {
+	row := q.db.QueryRowContext(ctx, getTripDetail, tripID)
+	var i GetTripDetailRow
+	err := row.Scan(
+		&i.TripID,
+		&i.RouteID,
+		&i.RouteStartLocation,
+		&i.RouteEndLocation,
+		&i.TripDepartureTime,
+		&i.TripArrivalTime,
+		&i.TripBasePrice,
+		&i.BusLicensePlate,
+		&i.BusCompany,
+		&i.BusCapacity,
+		&i.BusID,
+	)
+	return i, err
+}
+
 const updateTrip = `-- name: UpdateTrip :execrows
 UPDATE trips
 SET trip_updated_at = NOW(), trip_departure_time = ?, trip_arrival_time = ?, trip_base_price = ?

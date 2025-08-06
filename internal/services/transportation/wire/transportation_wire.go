@@ -17,6 +17,8 @@ import (
 
 var TransportationRepositorySet = wire.NewSet(
 	transportationrepositoryimpl.NewTripRepository,
+	transportationrepositoryimpl.NewSeatRepository,
+	transportationrepositoryimpl.NewTripSeatLockRepository,
 )
 
 func InitTransportationQueryHandler(db *sql.DB, rdb *redis.Client, localCache *ristretto.Cache, logger *zap.Logger) transportationqueryhandler.TransportationQueryHandler {

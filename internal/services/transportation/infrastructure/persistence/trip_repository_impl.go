@@ -17,6 +17,32 @@ type tripRepository struct {
 	db   *sql.DB
 }
 
+// GetTripDetail implements transportationrepository.TripRepository.
+func (t *tripRepository) GetTripDetail(ctx context.Context, id uint64) (*transportationmodel.Trip, error) {
+	txQueries := t.getTripQueries(ctx)
+	result, err := txQueries.GetTripDetail(ctx, int64(id))
+	if err != nil {
+		return nil, err
+	}
+	return &transportationmodel.Trip{
+		TripId:            uint64(result.TripID),
+		TripDepartureTime: result.TripDepartureTime,
+		TripArrivalTime:   result.TripArrivalTime,
+		TripBasePrice:     decimal.RequireFromString(result.TripBasePrice),
+		Route: &transportationmodel.Route{
+			RouteId:            uint64(result.RouteID),
+			RouteStartLocation: result.RouteStartLocation,
+			RouteEndLocation:   result.RouteEndLocation,
+		},
+		Bus: &transportationmodel.Bus{
+			BusId:           uint64(result.BusID),
+			BusLicensePlate: result.BusLicensePlate,
+			BusCompany:      result.BusCompany,
+			BusCapacity:     uint8(result.BusCapacity),
+		},
+	}, nil
+}
+
 // GetListTripsCount implements transportationrepository.TripRepository.
 func (t *tripRepository) GetListTripsCount(ctx context.Context, departureDate time.Time, fromLocation string, toLocation string) (int, error) {
 	txQueries := t.getTripQueries(ctx)
@@ -91,7 +117,7 @@ func (t *tripRepository) DeleteForceTrip(ctx context.Context, tripId uint64) err
 }
 
 // GetById implements transportationrepository.TripRepository.
-func (t *tripRepository) GetTripById(ctx context.Context, tripId uint32) (*transportationmodel.Trip, error) {
+func (t *tripRepository) GetTripById(ctx context.Context, tripId uint64) (*transportationmodel.Trip, error) {
 	result, err := t.sqlc.GetTripById(ctx, int64(tripId))
 	if err != nil {
 		return nil, err

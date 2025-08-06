@@ -11,11 +11,10 @@ type GetListTripsResponse struct {
 }
 
 type Trip struct {
-	ID                uint64          `json:"id"`
-	FromLocation      string          `json:"from_location"`
-	ToLocation        string          `json:"to_location"`
-	DepartureDate     string          `json:"departure_date"`
-	ArrivalDate       string          `json:"arrival_date"`
-	EstimatedDuration uint64          `json:"estimated_duration"`
-	Price             decimal.Decimal `json:"price"`
+	ID            uint64          `json:"id"`
+	FromLocation  string          `json:"from_location"`
+	ToLocation    string          `json:"to_location"`
+	DepartureTime string          `json:"departure_time"`
+	ArrivalTime   string          `json:"arrival_time"`
+	Price         decimal.Decimal `json:"price"`
 }

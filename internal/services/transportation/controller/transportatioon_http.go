@@ -13,6 +13,7 @@ func InitTransportationRouter(rg *gin.RouterGroup, container *initialize.AppCont
 	transportationRouterPublic := rg.Group("/transportation")
 	{
 		transportationRouterPublic.GET("/search-trips", transportationQueryHandler.GetListTrips)
+		transportationRouterPublic.GET("/trip-detail/:id", transportationQueryHandler.GetTripDetail)
 	}
 
 	// private router

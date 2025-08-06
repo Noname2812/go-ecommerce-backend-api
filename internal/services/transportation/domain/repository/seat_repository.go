@@ -12,4 +12,5 @@ type SeatRepository interface {
 	DeleteForceSeat(ctx context.Context, id uint64) error
 	DeleleSeat(ctx context.Context, id uint64) error
 	GetSeatById(ctx context.Context, id uint32) (*transportationmodel.Seat, error)
+	GetListSeatsByBusId(ctx context.Context, busId uint64) ([]transportationmodel.Seat, error)
 }

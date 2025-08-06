@@ -12,7 +12,8 @@ type TripRepository interface {
 	UpdateTrip(ctx context.Context, model *transportationmodel.Trip) error
 	DeleteForceTrip(ctx context.Context, id uint64) error
 	DeleleTrip(ctx context.Context, id uint64) error
-	GetTripById(ctx context.Context, id uint32) (*transportationmodel.Trip, error)
+	GetTripById(ctx context.Context, id uint64) (*transportationmodel.Trip, error)
 	GetListTrips(ctx context.Context, departureDate time.Time, fromLocation string, toLocation string, page int) ([]transportationmodel.Trip, error)
 	GetListTripsCount(ctx context.Context, departureDate time.Time, fromLocation string, toLocation string) (int, error)
+	GetTripDetail(ctx context.Context, id uint64) (*transportationmodel.Trip, error)
 }
