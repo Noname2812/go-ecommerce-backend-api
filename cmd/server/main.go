@@ -4,7 +4,6 @@ import (
 	"context"
 	"os"
 	"os/signal"
-	"sync"
 	"syscall"
 	"time"
 
@@ -17,6 +16,7 @@ import (
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 	"go.uber.org/zap"
+	"golang.org/x/sync/errgroup"
 )
 
 var pingCounter = prometheus.NewCounter(
@@ -68,36 +68,47 @@ func main() {
 	go func() {
 		<-sigChan
 		cancel()
+
+		// timeout for shutdown all services
 		shutdownCtx, cancelShutdown := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancelShutdown()
 
-		var wg sync.WaitGroup
-		wg.Add(2)
+		g, ctx := errgroup.WithContext(shutdownCtx)
 
-		// closing kafka
-		go func() {
-			defer wg.Done()
+		// clean up all services
+		g.Go(func() error {
+			initialize.CleanupServices()
+			appContainer.Logger.Info("All services cleaned up successfully")
+			return nil
+		})
+
+		// close kafka
+		g.Go(func() error {
 			if err := appContainer.KafkaManager.Close(); err != nil {
 				appContainer.Logger.Error("Failed to close Kafka manager", zap.Error(err))
-			} else {
-				appContainer.Logger.Info("Kafka manager closed successfully")
+				return err
 			}
-		}()
+			appContainer.Logger.Info("Kafka manager closed successfully")
+			return nil
+		})
 
-		// closing grpc
-		go func() {
-			defer wg.Done()
-			if err := appContainer.GRPCServerManager.Shutdown(shutdownCtx); err != nil {
+		// close gRPC
+		g.Go(func() error {
+			if err := appContainer.GRPCServerManager.Shutdown(ctx); err != nil {
 				appContainer.Logger.Error("Failed to shut down gRPC", zap.Error(err))
-			} else {
-				appContainer.Logger.Info("gRPC manager shut down successfully")
+				return err
 			}
-		}()
+			appContainer.Logger.Info("gRPC manager shut down successfully")
+			return nil
+		})
 
-		// wait until both goroutines done
-		wg.Wait()
+		// wait for all tasks to complete or timeout
+		if err := g.Wait(); err != nil {
+			appContainer.Logger.Error("Shutdown encountered error", zap.Error(err))
+		} else {
+			appContainer.Logger.Info("All services shut down cleanly")
+		}
 
-		appContainer.Logger.Info("All services stopped. Exiting.")
 		os.Exit(0)
 	}()
 

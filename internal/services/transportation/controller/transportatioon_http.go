@@ -9,6 +9,12 @@ import (
 
 func InitTransportationRouter(rg *gin.RouterGroup, container *initialize.AppContainer) {
 	transportationQueryHandler := transportationwire.InitTransportationQueryHandler(container.DB, container.RedisClient, container.LocalCache, container.Logger)
+
+	// Register service for cleanup
+	if handler, ok := transportationQueryHandler.(interface{ GetService() interface{} }); ok {
+		initialize.RegisterService("transportation_query", handler.GetService())
+	}
+
 	// public router
 	transportationRouterPublic := rg.Group("/transportation")
 	{

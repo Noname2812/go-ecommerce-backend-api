@@ -16,8 +16,10 @@ import (
 	transportationrepository "github.com/Noname2812/go-ecommerce-backend-api/internal/services/transportation/domain/repository"
 	transportationmapper "github.com/Noname2812/go-ecommerce-backend-api/internal/services/transportation/infrastructure/mapper"
 	"github.com/Noname2812/go-ecommerce-backend-api/pkg/response"
+	"github.com/panjf2000/ants"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
+	"golang.org/x/sync/singleflight"
 )
 
 type transportationQueryService struct {
@@ -27,6 +29,8 @@ type transportationQueryService struct {
 	seatLockRepo      transportationrepository.TripSeatLockRepository
 	redisCacheService cacheservice.RedisCache
 	localCacheService cacheservice.LocalCache
+	sfGroup           singleflight.Group
+	goroutinePool     *ants.Pool
 }
 
 // GetTripDetail implements transportationservice.TransportationQueryService.
@@ -35,126 +39,86 @@ func (t *transportationQueryService) GetTripDetail(ctx context.Context, id uint6
 		return response.ErrCodeParamInvalid, nil, fmt.Errorf("invalid trip id")
 	}
 	key := fmt.Sprintf(transportationconsts.TRIP_DETAIL_KEY, id)
-	// 1. get trip detail from local cache
-	detail, err := t.getTripDetailFromLocalCache(ctx, key)
-	if err != nil {
-		return response.ErrServerError, nil, err
-	}
-	if detail != nil {
-		return response.ErrCodeSuccess, detail, nil
-	}
-	// 2. get trip detail from redis cache or db
-	lockKey := fmt.Sprintf("lock:%s", key)
-	result, err := t.redisCacheService.WithDistributedLock(ctx, lockKey, transportationconsts.TRIPS_LOCK_TTL_SECONDS, func(ctx context.Context) (interface{}, error) {
-		// Double-check cache after acquiring lock
-		cache, err := t.getTripDetailFromLocalCache(ctx, key)
+	result, err, _ := t.sfGroup.Do(key, func() (interface{}, error) {
+		// 1. get trip detail from local cache
+		detail, err := t.getTripDetailFromLocalCache(ctx, key)
 		if err != nil {
 			return nil, err
 		}
-		if cache != nil {
+		if detail != nil {
 			return detail, nil
 		}
-
-		var (
-			detail *transportationqueryresponse.TripDetailResponse
-			seats  []transportationqueryresponse.Seat
-		)
-		g, ctx := errgroup.WithContext(ctx)
-		// Goroutine 1: Get trip detail
-		g.Go(func() error {
-			d, err := t.getTripDetail(ctx, id)
+		// 2. get trip detail from redis cache or db
+		lockKey := fmt.Sprintf("lock:%s", key)
+		return t.redisCacheService.WithDistributedLock(ctx, lockKey, transportationconsts.TRIPS_LOCK_TTL_SECONDS, func(ctx context.Context) (interface{}, error) {
+			// Double-check cache after acquiring lock
+			cache, err := t.getTripDetailFromLocalCache(ctx, key)
 			if err != nil {
-				return fmt.Errorf("getTripDetail error: %w", err)
+				return nil, err
 			}
-			detail = d
-			return nil
+			if cache != nil {
+				return cache, nil
+			}
+
+			var (
+				detail *transportationqueryresponse.TripDetailResponse
+				seats  []transportationqueryresponse.Seat
+			)
+			g, ctx := errgroup.WithContext(ctx)
+			// Goroutine 1: Get trip detail
+			g.Go(func() error {
+				d, err := t.getTripDetail(ctx, id)
+				if err != nil {
+					return fmt.Errorf("getTripDetail error: %w", err)
+				}
+				detail = d
+				return nil
+			})
+
+			// Goroutine 2: Get seat status
+			g.Go(func() error {
+				s, err := t.getSeatsStatus(ctx, id)
+				if err != nil {
+					return fmt.Errorf("getSeatsStatus error: %w", err)
+				}
+				seats = s
+				return nil
+			})
+
+			// Wait for all goroutines to complete
+			if err := g.Wait(); err != nil {
+				return nil, err
+			}
+
+			// Merge data and save to local cache
+			detail.Seats = seats
+			isSuccess := t.localCacheService.SetWithTTL(ctx, key, detail, transportationconsts.TRIP_DETAIL_KEY_LOCAL_TTL)
+			if !isSuccess {
+				t.logger.Error("save trip detail to local cache failed", zap.String("key", key))
+			}
+			t.logger.Info("save trip detail to local cache success", zap.String("key", key))
+			return detail, nil
 		})
-
-		// Goroutine 2: Get seat status
-		g.Go(func() error {
-			s, err := t.getSeatsStatus(ctx, id)
-			if err != nil {
-				return fmt.Errorf("getSeatsStatus error: %w", err)
-			}
-			seats = s
-			return nil
-		})
-
-		// Wait for all goroutines to complete
-		if err := g.Wait(); err != nil {
-			return nil, err
-		}
-
-		// Merge data and save to local cache
-		detail.Seats = seats
-		isSuccess := t.localCacheService.SetWithTTL(ctx, key, detail, transportationconsts.TRIP_DETAIL_KEY_LOCAL_TTL)
-		if !isSuccess {
-			t.logger.Error("save trip detail to local cache failed", zap.String("key", key))
-		}
-		t.logger.Info("save trip detail to local cache success", zap.String("key", key))
-		return detail, nil
-	})
-	// If we couldn't acquire the lock (another process is handling it), retry to get from cache
-	if err != nil {
-		return response.ErrServerError, nil, err
-	}
-	// If we got the lock and processed the request
-	if result != nil {
-		return response.ErrCodeSuccess, result.(*transportationqueryresponse.TripDetailResponse), nil
-	}
-	// 4. Retry to get data from cache with exponential backoff
-	cache, err := utils.RetryWithExponentialBackoff(ctx, transportationconsts.MAX_RETRY_GET_TRIP_DETAIL, transportationconsts.RETRY_GET_TRIP_DETAIL_BACKOFF, func() (interface{}, error) {
-		// Check local cache
-		value, isFound := t.localCacheService.Get(ctx, key)
-		if isFound {
-			res, ok := value.(*transportationqueryresponse.TripDetailResponse)
-			if ok {
-				return res, nil
-			}
-			return nil, fmt.Errorf("local cache item with key %s is not TripDetailResponse", key)
-		}
-		return nil, nil
 	})
 
 	if err != nil {
-		t.logger.Error("retry to get from cache failed", zap.Error(err), zap.String("key", key))
+		t.logger.Error("get trip detail failed", zap.Error(err), zap.Uint64("trip_id", id))
 		return response.ErrServerError, nil, err
 	}
 
-	return response.ErrCodeSuccess, cache.(*transportationqueryresponse.TripDetailResponse), nil
+	detailRes, ok := result.(*transportationqueryresponse.TripDetailResponse)
+	if !ok {
+		return response.ErrServerError, nil, fmt.Errorf("unexpected result type from singleflight")
+	}
+
+	return response.ErrCodeSuccess, detailRes, nil
 }
 
 // GetListTrips implements transportationservice.TransportationQueryService.
 func (t *transportationQueryService) GetListTrips(ctx context.Context, request *transportationqueryrequest.GetListTripsRequest) (int, *transportationqueryresponse.GetListTripsResponse, error) {
 	key := fmt.Sprintf(transportationconsts.TRIPS_KEY, request.FromLocation, request.ToLocation, request.DepartureDate, request.Page)
-
-	// 1. get data from local cache first
-	tripsLocal, err := t.getListTripsFromLocalCache(ctx, key)
-	if err != nil {
-		return response.ErrServerError, nil, err
-	}
-	if tripsLocal != nil {
-		return response.ErrCodeSuccess, tripsLocal, nil
-	}
-
-	// 2. check if data exists in redis cache
-	trips, err := t.getListTripsFromRedisCache(ctx, key)
-	if err != nil {
-		t.logger.Error("get list trips from redis cache failed", zap.Error(err), zap.String("key", key))
-		return response.ErrServerError, nil, err
-	}
-	if trips != nil {
-		// Cache warming: save to local cache for next requests
-		go func() {
-			_ = t.localCacheService.SetWithTTL(ctx, key, trips, transportationconsts.TRIPS_KEY_LOCAL_TTL)
-		}()
-		return response.ErrCodeSuccess, trips, nil
-	}
-
-	// 3. Data not in cache, try to acquire distributed lock
-	lockKey := fmt.Sprintf("lock:%s", key)
-	result, err := t.redisCacheService.WithDistributedLock(ctx, lockKey, transportationconsts.TRIPS_LOCK_TTL_SECONDS, func(ctx context.Context) (interface{}, error) {
-		// Double-check cache after acquiring lock
+	result, err, _ := t.sfGroup.Do(key, func() (interface{}, error) {
+		// 1. get data from local cache first
 		tripsLocal, err := t.getListTripsFromLocalCache(ctx, key)
 		if err != nil {
 			return nil, err
@@ -163,54 +127,69 @@ func (t *transportationQueryService) GetListTrips(ctx context.Context, request *
 			return tripsLocal, nil
 		}
 
-		// Query database
-		response, err := t.getTripsAndCountFromDB(ctx, request)
+		// 2. check if data exists in redis cache
+		trips, err := t.getListTripsFromRedisCache(ctx, key)
 		if err != nil {
-			t.logger.Error("get trips and count from db failed", zap.Error(err))
+			t.logger.Error("get list trips from redis cache failed", zap.Error(err), zap.String("key", key))
 			return nil, err
+		}
+		if trips != nil {
+			// Cache warming: save to local cache for next requests
+			go func() {
+				_ = t.localCacheService.SetWithTTL(ctx, key, trips, transportationconsts.TRIPS_KEY_LOCAL_TTL)
+			}()
+			return trips, nil
 		}
 
-		// save the data to the cache
-		err = t.saveListTripsToRedisCache(ctx, key, response)
-		if err != nil {
-			t.logger.Error("save cache failed", zap.Error(err), zap.String("key", key))
-			return nil, err
-		}
-		t.logger.Info("save cache success", zap.String("key", key))
-		return response, nil
-	})
-	// If we couldn't acquire the lock (another process is handling it), retry to get from cache
-	if err != nil {
-		return response.ErrServerError, nil, err
-	}
-	// If we got the lock and processed the request
-	if result != nil {
-		return response.ErrCodeSuccess, result.(*transportationqueryresponse.GetListTripsResponse), nil
-	}
-	// 4. Retry to get data from cache with exponential backoff
-	cache, err := utils.RetryWithExponentialBackoff(ctx, transportationconsts.MAX_RETRY_GET_LIST_TRIPS, transportationconsts.RETRY_GET_LIST_TRIPS_BACKOFF, func() (interface{}, error) {
-		// Check local cache first
-		value, isFound := t.localCacheService.Get(ctx, key)
-		if isFound {
-			trips, ok := value.(*transportationqueryresponse.GetListTripsResponse)
-			if ok {
-				return trips, nil
+		// 3. Data not in cache, try to acquire distributed lock
+		lockKey := fmt.Sprintf("lock:%s", key)
+		return t.redisCacheService.WithDistributedLock(ctx, lockKey, transportationconsts.TRIPS_LOCK_TTL_SECONDS, func(ctx context.Context) (interface{}, error) {
+			// Double-check cache after acquiring lock
+			tripsLocal, err := t.getListTripsFromLocalCache(ctx, key)
+			if err != nil {
+				return nil, err
 			}
-			t.logger.Error("local cache item with key is not GetListTripsResponse", zap.String("key", key))
-			t.localCacheService.Del(ctx, key)
-			return nil, fmt.Errorf("local cache item with key %s is not GetListTripsResponse", key)
-		}
+			if tripsLocal != nil {
+				return tripsLocal, nil
+			}
 
-		// Check redis cache
-		return t.getListTripsFromRedisCache(ctx, key)
+			// Query database
+			response, err := t.getTripsAndCountFromDB(ctx, request)
+			if err != nil {
+				t.logger.Error("get trips and count from db failed", zap.Error(err))
+				return nil, err
+			}
+
+			// save the data to the cache
+			err = t.saveListTripsToRedisCache(ctx, key, response)
+			if err != nil {
+				t.logger.Error("save cache failed", zap.Error(err), zap.String("key", key))
+				return nil, err
+			}
+			t.logger.Info("save cache success", zap.String("key", key))
+			return response, nil
+		})
 	})
 
 	if err != nil {
-		t.logger.Error("retry to get from cache failed", zap.Error(err), zap.String("key", key))
+		t.logger.Error("get list trips failed", zap.Error(err), zap.String("key", key))
 		return response.ErrServerError, nil, err
 	}
 
-	return response.ErrCodeSuccess, cache.(*transportationqueryresponse.GetListTripsResponse), nil
+	tripsRes, ok := result.(*transportationqueryresponse.GetListTripsResponse)
+	if !ok {
+		return response.ErrServerError, nil, fmt.Errorf("unexpected result type from singleflight")
+	}
+
+	return response.ErrCodeSuccess, tripsRes, nil
+}
+
+// Cleanup method for graceful shutdown
+func (t *transportationQueryService) Close() error {
+	if t.goroutinePool != nil {
+		t.goroutinePool.Release()
+	}
+	return nil
 }
 
 func NewTransportationQueryService(tripRepo transportationrepository.TripRepository,
@@ -220,6 +199,16 @@ func NewTransportationQueryService(tripRepo transportationrepository.TripReposit
 	localCacheService cacheservice.LocalCache,
 	logger *zap.Logger,
 ) transportationservice.TransportationQueryService {
+	// Create goroutine pool with 100 workers
+	pool, err := ants.NewPool(100, ants.WithOptions(ants.Options{
+		ExpiryDuration:   10 * time.Second,
+		PreAlloc:         true,
+		MaxBlockingTasks: 2000,
+		Nonblocking:      false,
+	}))
+	if err != nil {
+		logger.Fatal("failed to create goroutine pool", zap.Error(err))
+	}
 	return &transportationQueryService{
 		tripRepo:          tripRepo,
 		seatRepo:          seatRepo,
@@ -227,6 +216,8 @@ func NewTransportationQueryService(tripRepo transportationrepository.TripReposit
 		redisCacheService: cacheService,
 		localCacheService: localCacheService,
 		logger:            logger,
+		sfGroup:           singleflight.Group{},
+		goroutinePool:     pool,
 	}
 }
 

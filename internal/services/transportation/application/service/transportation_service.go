@@ -12,4 +12,5 @@ type TransportationCommandService interface{}
 type TransportationQueryService interface {
 	GetListTrips(ctx context.Context, request *transportationqueryrequest.GetListTripsRequest) (code int, data *transportationqueryresponse.GetListTripsResponse, err error)
 	GetTripDetail(ctx context.Context, id uint64) (code int, data *transportationqueryresponse.TripDetailResponse, err error)
+	Close() error
 }

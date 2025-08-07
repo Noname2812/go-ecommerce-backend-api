@@ -29,8 +29,8 @@ Check local cache
                                     │
                                     ▼
                                 Get data from db
-                                        |
-                                        ▼
+                                    |
+                                    ▼
                                 Save local cache 
                                     |
                                     ▼
