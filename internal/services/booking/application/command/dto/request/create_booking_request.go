@@ -31,7 +31,6 @@ func (req *CreateBookingRequest) Validate(ctx *gin.Context) map[string]string {
 	errors := utils.ValidateStructWithValidatorTags(validate, req)
 	// Custom validations
 	req.validateSeats(errors)
-	req.validateTotalPrice(errors)
 	req.validateName(errors)
 	req.validateNote(errors)
 	if len(errors) == 0 {
@@ -62,14 +61,6 @@ func (req *CreateBookingRequest) validateSeats(errors map[string]string) {
 		}
 		seatNumbers[seat.SeatNumber] = true
 
-		// validate seat price
-		if seat.Price <= 0 {
-			errors[fieldPrefix+".price"] = "Seat price must be greater than 0"
-		}
-		if seat.Price > 10000000 { // 10 million
-			errors[fieldPrefix+".price"] = "Seat price cannot exceed 10,000,000"
-		}
-
 		// validate passenger name
 		if len(strings.TrimSpace(seat.PassengerName)) < 2 {
 			errors[fieldPrefix+".passenger_name"] = "Passenger name must be at least 2 characters"
@@ -77,26 +68,6 @@ func (req *CreateBookingRequest) validateSeats(errors map[string]string) {
 		if len(seat.PassengerName) > 100 {
 			errors[fieldPrefix+".passenger_name"] = "Passenger name cannot exceed 100 characters"
 		}
-	}
-}
-
-// validateTotalPrice validate total price
-func (req *CreateBookingRequest) validateTotalPrice(errors map[string]string) {
-	if req.TotalPrice <= 0 {
-		errors["total_price"] = "Total price must be greater than 0"
-		return
-	}
-
-	// calculate total price from seats
-	calculatedTotal := 0.0
-	for _, seat := range req.Seats {
-		calculatedTotal += seat.Price
-	}
-
-	// allow small error due to floating point
-	tolerance := 0.01
-	if calculatedTotal-req.TotalPrice > tolerance || req.TotalPrice-calculatedTotal > tolerance {
-		errors["total_price"] = fmt.Sprintf("Total price does not match. Calculated: %.2f, Received: %.2f", calculatedTotal, req.TotalPrice)
 	}
 }
 

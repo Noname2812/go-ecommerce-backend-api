@@ -233,17 +233,17 @@ INSERT INTO trips (route_id, bus_id, trip_departure_time, trip_arrival_time, tri
 -- =====================================================
 -- SAMPLE TRIP SEAT LOCKS (for testing)
 -- =====================================================
-INSERT INTO trip_seat_locks (trip_id, bus_id, seat_id, locked_by_booking_id, trip_seat_lock_status, trip_seat_lock_expires_at) VALUES
+INSERT INTO trip_seat_locks (trip_id, seat_id, locked_by_booking_id, trip_seat_lock_status, trip_seat_lock_expires_at) VALUES
 -- Trip 1: Some seats are locked/booked
-(1, 1, 1, 1001, 2, DATE_ADD(NOW(), INTERVAL 30 MINUTE)), -- Locked
-(1, 1, 2, 1002, 3, NULL), -- Booked
-(1, 1, 3, NULL, 1, NULL), -- Available
-(1, 1, 4, NULL, 1, NULL), -- Available
-(1, 1, 5, 1003, 2, DATE_ADD(NOW(), INTERVAL 15 MINUTE)), -- Locked
+(1, 1, 1001, 2, DATE_ADD(NOW(), INTERVAL 30 MINUTE)), -- Locked
+(1, 2, 1002, 3, NULL), -- Booked
+(1, 3, NULL, 1, NULL), -- Available
+(1, 4, NULL, 1, NULL), -- Available
+(1, 5, 1003, 2, DATE_ADD(NOW(), INTERVAL 15 MINUTE)), -- Locked
 
 -- Trip 2: Most seats available
-(2, 2, 1, NULL, 1, NULL), -- Available
-(2, 2, 2, NULL, 1, NULL), -- Available
-(2, 2, 3, 1004, 3, NULL), -- Booked
-(2, 2, 4, NULL, 1, NULL), -- Available
-(2, 2, 5, NULL, 1, NULL); -- Available 
+(2, 1, NULL, 1, NULL), -- Available
+(2, 2, NULL, 1, NULL), -- Available
+(2, 3, 1004, 3, NULL), -- Booked
+(2, 4, NULL, 1, NULL), -- Available
+(2, 5, NULL, 1, NULL); -- Available 

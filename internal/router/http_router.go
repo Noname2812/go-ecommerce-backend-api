@@ -25,8 +25,9 @@ func InitHttpRouter(config *setting.Config, container *initialize.AppContainer) 
 	v := validator.New()
 	// middlewares
 	r.Use(middlewares.CORS)
-	r.Use(middlewares.ValidatorMiddleware(v))
 	r.Use(middlewares.RecoveryWithLogger(container.Logger))
+	r.Use(middlewares.TimeoutMiddleware(container.Logger))
+	r.Use(middlewares.ValidatorMiddleware(v))
 	MainGroup := r.Group("/v1")
 	{
 		MainGroup.GET("/checkStatus") // tracking monitor
