@@ -1,6 +1,13 @@
 package bookingservice
 
+import (
+	"context"
+
+	bookingcommandrequest "github.com/Noname2812/go-ecommerce-backend-api/internal/services/booking/application/command/dto/request"
+)
+
 type BookingCommandService interface {
+	CreateBooking(ctx context.Context, body *bookingcommandrequest.CreateBookingRequest) (int, error, interface{})
 }
 
 type BookingQueryService interface {

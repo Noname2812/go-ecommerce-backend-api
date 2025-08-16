@@ -128,7 +128,7 @@ type AccUserVerify struct {
 
 // Table to store booking information
 type Booking struct {
-	BookingID           int64
+	BookingID           string
 	TripID              int64
 	UserID              sql.NullInt64
 	BookingTotalPrice   string
@@ -260,7 +260,7 @@ type Seat struct {
 // Table to store seat booking information
 type SeatBooking struct {
 	SeatBookingID         int64
-	BookingID             int64
+	BookingID             string
 	SeatBookingSeatNumber string
 	SeatBookingPrice      string
 	PassengerName         string
@@ -337,7 +337,7 @@ type TripSeatLock struct {
 	TripSeatLockID        int64
 	TripID                int64
 	SeatID                int64
-	LockedByBookingID     sql.NullInt64
+	LockedByBookingID     string
 	TripSeatLockStatus    uint8
 	TripSeatLockExpiresAt sql.NullTime
 	TripSeatLockCreatedAt sql.NullTime

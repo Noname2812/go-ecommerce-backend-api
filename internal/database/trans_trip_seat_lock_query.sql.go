@@ -21,7 +21,7 @@ INSERT INTO trip_seat_locks (
 type AddTripSeatLockParams struct {
 	TripID                int64
 	SeatID                int64
-	LockedByBookingID     sql.NullInt64
+	LockedByBookingID     string
 	TripSeatLockStatus    uint8
 	TripSeatLockExpiresAt sql.NullTime
 }
@@ -53,7 +53,7 @@ ON DUPLICATE KEY UPDATE
 type CreateOrUpdateSeatLockParams struct {
 	TripID                int64
 	SeatID                int64
-	LockedByBookingID     sql.NullInt64
+	LockedByBookingID     string
 	TripSeatLockStatus    uint8
 	TripSeatLockExpiresAt sql.NullTime
 }
@@ -117,7 +117,7 @@ type GetMapSeatLockByTripIdRow struct {
 	SeatColumnNo          uint8
 	SeatFloorNo           uint8
 	SeatType              uint8
-	LockedByBookingID     sql.NullInt64
+	LockedByBookingID     sql.NullString
 	TripSeatLockStatus    uint8
 	TripSeatLockExpiresAt sql.NullTime
 }
@@ -187,7 +187,7 @@ WHERE trip_seat_lock_id = ? AND trip_seat_lock_updated_at = ? AND trip_seat_lock
 
 type UpdateTripSeatLockParams struct {
 	SeatID                int64
-	LockedByBookingID     sql.NullInt64
+	LockedByBookingID     string
 	TripSeatLockStatus    uint8
 	TripSeatLockExpiresAt sql.NullTime
 	TripSeatLockID        int64

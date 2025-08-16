@@ -9,7 +9,6 @@ import (
 	usercommandhandler "github.com/Noname2812/go-ecommerce-backend-api/internal/services/user/application/command/handler"
 	usermessaging "github.com/Noname2812/go-ecommerce-backend-api/internal/services/user/application/messaging"
 	userqueryhandler "github.com/Noname2812/go-ecommerce-backend-api/internal/services/user/application/query/handler"
-	userserviceserver "github.com/Noname2812/go-ecommerce-backend-api/internal/services/user/infrastructure/grpc"
 	useremessagingimpl "github.com/Noname2812/go-ecommerce-backend-api/internal/services/user/infrastructure/messaging"
 	userrepositoryimpl "github.com/Noname2812/go-ecommerce-backend-api/internal/services/user/infrastructure/persistence"
 	userserviceimpl "github.com/Noname2812/go-ecommerce-backend-api/internal/services/user/infrastructure/service"
@@ -46,7 +45,7 @@ func InitUserCommandHandler(db *sql.DB, logger *zap.Logger, manager *kafka.Manag
 func InitUserServiceServer(db *sql.DB, logger *zap.Logger) userpb.UserServiceServer {
 	wire.Build(
 		UserRepositorySet,
-		userserviceserver.NewUserServiceServer,
+		userserviceimpl.NewUserServiceServer,
 	)
 	return nil
 }

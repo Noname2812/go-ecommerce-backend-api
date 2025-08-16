@@ -1,4 +1,4 @@
-package userserviceserver
+package userserviceimpl
 
 import (
 	"context"

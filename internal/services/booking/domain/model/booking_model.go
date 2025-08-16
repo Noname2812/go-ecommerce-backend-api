@@ -8,7 +8,7 @@ import (
 
 // Booking model
 type Booking struct {
-	BookingId           uint64          // primary key
+	BookingId           string          // primary key
 	TripId              uint64          // trip id
 	UserId              *uint64         // user id
 	BookingTotalPrice   decimal.Decimal // total price (ex: 1000000 VND)

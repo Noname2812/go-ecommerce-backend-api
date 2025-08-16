@@ -19,7 +19,7 @@ type bookingRepository struct {
 }
 
 // Createbooking implements transportationrepository.bookingRepository.
-func (t *bookingRepository) CreateBooking(ctx context.Context, model *bookingmodel.Booking) (uint64, error) {
+func (t *bookingRepository) CreateBooking(ctx context.Context, model *bookingmodel.Booking) error {
 	txQueries := t.getBookingQueries(ctx)
 	data := &database.AddBookingParams{
 		TripID:              int64(model.TripId),
@@ -34,37 +34,33 @@ func (t *bookingRepository) CreateBooking(ctx context.Context, model *bookingmod
 		BookingUpdatedAt:    sql.NullTime{Time: model.BookingUpdatedAt, Valid: true},
 	}
 
-	result, err := txQueries.AddBooking(ctx, *data)
+	_, err := txQueries.AddBooking(ctx, *data)
 	if err != nil {
-		return 0, err
+		return err
 	}
-	id, err := result.LastInsertId()
-	if err != nil {
-		return 0, err
-	}
-	return uint64(id), nil
+	return nil
 }
 
 // Delelebooking implements transportationrepository.bookingRepository.
-func (t *bookingRepository) DeleleBooking(ctx context.Context, bookingId uint64) error {
+func (t *bookingRepository) DeleleBooking(ctx context.Context, id string) error {
 	txQueries := t.getBookingQueries(ctx)
-	return txQueries.DeleteBooking(ctx, int64(bookingId))
+	return txQueries.DeleteBooking(ctx, string(id))
 }
 
 // DeleteForcebooking implements transportationrepository.bookingRepository.
-func (t *bookingRepository) DeleteForceBooking(ctx context.Context, bookingId uint64) error {
+func (t *bookingRepository) DeleteForceBooking(ctx context.Context, bookingId string) error {
 	txQueries := t.getBookingQueries(ctx)
-	return txQueries.DeleteForceBooking(ctx, int64(bookingId))
+	return txQueries.DeleteForceBooking(ctx, string(bookingId))
 }
 
 // GetById implements transportationrepository.bookingRepository.
-func (t *bookingRepository) GetBookingById(ctx context.Context, bookingId uint32) (*bookingmodel.Booking, error) {
-	result, err := t.sqlc.GetBookingById(ctx, int64(bookingId))
+func (t *bookingRepository) GetBookingById(ctx context.Context, bookingId string) (*bookingmodel.Booking, error) {
+	result, err := t.sqlc.GetBookingById(ctx, string(bookingId))
 	if err != nil {
 		return nil, err
 	}
 	return &bookingmodel.Booking{
-		BookingId:           uint64(result.BookingID),
+		BookingId:           result.BookingID,
 		TripId:              uint64(result.TripID),
 		UserId:              utils.NullInt64ToUint64Ptr(result.UserID),
 		BookingTotalPrice:   decimal.RequireFromString(result.BookingTotalPrice),
@@ -88,7 +84,7 @@ func (t *bookingRepository) UpdateBooking(ctx context.Context, model *bookingmod
 		BookingContactPhone: model.BookingContactPhone,
 		BookingContactEmail: model.BookingContactEmail,
 		BookingNote:         sql.NullString{String: *model.BookingNote, Valid: model.BookingNote != nil},
-		BookingID:           int64(model.BookingId),
+		BookingID:           model.BookingId,
 		BookingUpdatedAt:    sql.NullTime{Time: model.BookingUpdatedAt, Valid: true},
 	}
 

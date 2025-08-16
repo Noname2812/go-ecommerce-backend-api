@@ -51,7 +51,6 @@ func (a *authCommandService) SaveAccount(ctx context.Context, input *authcommand
 	if err != nil {
 		return response.ErrServerError, err
 	}
-
 	if token != input.Token {
 		return response.ErrInvalidToken, fmt.Errorf("invalid token")
 	}

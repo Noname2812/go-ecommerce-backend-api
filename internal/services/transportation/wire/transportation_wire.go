@@ -5,6 +5,7 @@ package transportationwire
 import (
 	"database/sql"
 
+	transportationpb "github.com/Noname2812/go-ecommerce-backend-api/internal/common/protogen/transportation"
 	cacheservice "github.com/Noname2812/go-ecommerce-backend-api/internal/common/utils/cache"
 	transportationqueryhandler "github.com/Noname2812/go-ecommerce-backend-api/internal/services/transportation/application/query/handler"
 	transportationrepositoryimpl "github.com/Noname2812/go-ecommerce-backend-api/internal/services/transportation/infrastructure/persistence"
@@ -28,6 +29,16 @@ func InitTransportationQueryHandler(db *sql.DB, rdb *redis.Client, localCache *r
 		cacheservice.NewLocalCache,
 		transportationserviceimpl.NewTransportationQueryService,
 		transportationqueryhandler.NewTransportationQueryHandler,
+	)
+	return nil
+}
+
+func InitTransportationServiceServer(db *sql.DB, logger *zap.Logger, redisClient *redis.Client) transportationpb.TransportationServiceServer {
+	wire.Build(
+		transportationrepositoryimpl.NewTripSeatLockRepository,
+		transportationrepositoryimpl.NewTransactionManager,
+		cacheservice.NewRedisCache,
+		transportationserviceimpl.NewTransportationServiceServer,
 	)
 	return nil
 }

@@ -53,7 +53,7 @@ SET booking_deleted_at = NOW()
 WHERE booking_id = ?
 `
 
-func (q *Queries) DeleteBooking(ctx context.Context, bookingID int64) error {
+func (q *Queries) DeleteBooking(ctx context.Context, bookingID string) error {
 	_, err := q.db.ExecContext(ctx, deleteBooking, bookingID)
 	return err
 }
@@ -62,7 +62,7 @@ const deleteForceBooking = `-- name: DeleteForceBooking :exec
 DELETE FROM bookings WHERE booking_id = ?
 `
 
-func (q *Queries) DeleteForceBooking(ctx context.Context, bookingID int64) error {
+func (q *Queries) DeleteForceBooking(ctx context.Context, bookingID string) error {
 	_, err := q.db.ExecContext(ctx, deleteForceBooking, bookingID)
 	return err
 }
@@ -73,7 +73,7 @@ FROM ` + "`" + `bookings` + "`" + `
 WHERE booking_id = ?
 `
 
-func (q *Queries) GetBookingById(ctx context.Context, bookingID int64) (Booking, error) {
+func (q *Queries) GetBookingById(ctx context.Context, bookingID string) (Booking, error) {
 	row := q.db.QueryRowContext(ctx, getBookingById, bookingID)
 	var i Booking
 	err := row.Scan(
@@ -107,7 +107,7 @@ type UpdateBookingParams struct {
 	BookingContactPhone string
 	BookingContactEmail string
 	BookingNote         sql.NullString
-	BookingID           int64
+	BookingID           string
 	BookingUpdatedAt    sql.NullTime
 }
 

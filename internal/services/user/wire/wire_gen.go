@@ -12,7 +12,6 @@ import (
 	"github.com/Noname2812/go-ecommerce-backend-api/internal/services/user/application/command/handler"
 	"github.com/Noname2812/go-ecommerce-backend-api/internal/services/user/application/messaging"
 	"github.com/Noname2812/go-ecommerce-backend-api/internal/services/user/application/query/handler"
-	"github.com/Noname2812/go-ecommerce-backend-api/internal/services/user/infrastructure/grpc"
 	"github.com/Noname2812/go-ecommerce-backend-api/internal/services/user/infrastructure/messaging"
 	"github.com/Noname2812/go-ecommerce-backend-api/internal/services/user/infrastructure/persistence"
 	"github.com/Noname2812/go-ecommerce-backend-api/internal/services/user/infrastructure/service"
@@ -41,7 +40,7 @@ func InitUserCommandHandler(db *sql.DB, logger *zap.Logger, manager *kafka.Manag
 
 func InitUserServiceServer(db *sql.DB, logger *zap.Logger) user.UserServiceServer {
 	userInfoRepository := userrepositoryimpl.NewUserInfoRepository(db)
-	userServiceServer := userserviceserver.NewUserServiceServer(userInfoRepository)
+	userServiceServer := userserviceimpl.NewUserServiceServer(userInfoRepository)
 	return userServiceServer
 }
 

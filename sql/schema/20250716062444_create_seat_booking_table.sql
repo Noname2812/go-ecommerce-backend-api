@@ -2,7 +2,7 @@
 -- +goose StatementBegin
 CREATE TABLE IF NOT EXISTS seat_bookings (
     seat_booking_id BIGINT AUTO_INCREMENT PRIMARY KEY,     -- Seat booking ID
-    booking_id BIGINT NOT NULL,                            -- Booking ID
+    booking_id CHAR(36) NOT NULL,                            -- Booking ID
     
     seat_booking_seat_number VARCHAR(10) NOT NULL,                      -- Seat number (A1, A2,...)
     seat_booking_price DECIMAL(10, 2) NOT NULL DEFAULT 0.00,            -- Seat price

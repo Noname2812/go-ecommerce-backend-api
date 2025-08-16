@@ -11,6 +11,7 @@ const (
 	ErrInvalidJson      = 40004 // invalid json
 	ErrInvalidOTP       = 40005 // Otp error
 	ErrSendEmailOtp     = 40006 // Failed to send email OTP
+	ErrLockSeatFailed   = 40007 // Lock seat failed
 
 	// Unauthorized
 	ErrCodeAuthFailed = 40100 // Authentication failed
@@ -59,4 +60,5 @@ var msg = map[int]string{
 	ErrCodeTwoFactorAuthVerifyFailed: "Two Factor Authentication verify failed",
 	ErrCodeUserNotFound:              "User not found",
 	ErrRequestTimeout:                "Request timeout",
+	ErrLockSeatFailed:                "You can't book this seat because it's already booked",
 }

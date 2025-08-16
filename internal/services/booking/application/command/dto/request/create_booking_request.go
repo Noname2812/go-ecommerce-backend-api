@@ -18,6 +18,7 @@ type SeatInfo struct {
 
 type CreateBookingRequest struct {
 	UserID     *string    `json:"user_id,omitempty"`               // user id
+	TripID     uint64     `json:"trip_id" validate:"required"`     // trip id
 	TotalPrice float64    `json:"total_price" validate:"required"` // total price
 	Seats      []SeatInfo `json:"seats" validate:"required"`       // seats
 	Note       *string    `json:"note,omitempty"`                  // note

@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS trip_seat_locks (
     trip_id BIGINT NOT NULL,                             -- Trip ID
     seat_id BIGINT NOT NULL,                             -- Seat ID
 
-    locked_by_booking_id BIGINT NULL,                -- Booking ID that locked the seat
+    locked_by_booking_id VARCHAR(255) NOT NULL,                -- Booking ID that locked the seat
     
     trip_seat_lock_status TINYINT UNSIGNED NOT NULL, -- 1: AVAILABLE, 2: LOCKED, 3: BOOKED
     trip_seat_lock_expires_at TIMESTAMP NULL,         -- Seat lock expiration time

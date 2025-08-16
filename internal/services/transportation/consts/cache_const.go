@@ -7,6 +7,8 @@ const (
 	TRIPS_KEY       = "trips:%s-%s:%s:%d" // key  for trips (ex: trips:1-2:2025-01-01:1 => trips:from-to:date:page)
 	TRIP_DETAIL_KEY = "trip_detail:%d"    // key for trip detail (ex: trip_detail:1 => trip_detail:id)
 	SEATS_KEY       = "trip_seats:%d"     // key for seats (ex: trip_seats:1 => trip_seats:trip_id)
+
+	SEATS_LOCK_KEY = "seats_lock:%d:%s" // key for seats lock (ex: seats_lock:1:1 => seats_lock:trip_id:seat_number)
 )
 
 // Cache TTL (Redis)
@@ -26,10 +28,4 @@ const (
 const (
 	TRIPS_LOCK_TTL_SECONDS = 5 * time.Second // Trips lock TTL in seconds
 	SEATS_LOCK_TTL_SECONDS = 3 * time.Second // Seats lock TTL in seconds
-)
-
-// Backoff delay
-const (
-	RETRY_GET_LIST_TRIPS_BACKOFF  = 100 * time.Millisecond // Retry get list trips backoff delay in milliseconds
-	RETRY_GET_TRIP_DETAIL_BACKOFF = 100 * time.Millisecond // Retry get trip detail backoff delay in milliseconds
 )

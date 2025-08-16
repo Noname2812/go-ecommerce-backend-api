@@ -104,11 +104,20 @@ func (s *sRedisCache) Get(ctx context.Context, key string) (string, bool, error)
 }
 
 func (s *sRedisCache) Set(ctx context.Context, key string, value interface{}, expiration time.Duration) error {
-	b, err := json.Marshal(value)
-	if err != nil {
-		return fmt.Errorf("json marshal error: %w", err)
+	var data interface{}
+
+	switch v := value.(type) {
+	case string:
+		data = v
+	default:
+		b, err := json.Marshal(v)
+		if err != nil {
+			return fmt.Errorf("json marshal error: %w", err)
+		}
+		data = b
 	}
-	if err := s.client.Set(ctx, key, b, expiration).Err(); err != nil {
+
+	if err := s.client.Set(ctx, key, data, expiration).Err(); err != nil {
 		return fmt.Errorf("redis set error: %w", err)
 	}
 	return nil

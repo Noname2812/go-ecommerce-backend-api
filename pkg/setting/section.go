@@ -20,11 +20,12 @@ type EmailSetting struct {
 }
 
 type GRPCSettings struct {
-	AuthServicePort         int `mapstructure:"AUTH_SERVICE_PORT"`
-	UserServicePort         int `mapstructure:"USER_SERVICE_PORT"`
-	OrderServicePort        int `mapstructure:"ORDER_SERVICE_PORT"`
-	ProductServicePort      int `mapstructure:"PRODUCT_SERVICE_PORT"`
-	NotificationServicePort int `mapstructure:"NOTIFICATION_SERVICE_PORT"`
+	AuthServicePort           int `mapstructure:"AUTH_SERVICE_PORT"`
+	UserServicePort           int `mapstructure:"USER_SERVICE_PORT"`
+	BookingServicePort        int `mapstructure:"BOOKING_SERVICE_PORT"`
+	PaymentServicePort        int `mapstructure:"PAYMENT_SERVICE_PORT"`
+	NotificationServicePort   int `mapstructure:"NOTIFICATION_SERVICE_PORT"`
+	TransportationServicePort int `mapstructure:"TRANSPORTATION_SERVICE_PORT"`
 }
 
 type ServerSetting struct {

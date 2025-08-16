@@ -7,9 +7,9 @@ import (
 )
 
 type BookingRepository interface {
-	CreateBooking(ctx context.Context, model *bookingmodel.Booking) (uint64, error)
+	CreateBooking(ctx context.Context, model *bookingmodel.Booking) error
 	UpdateBooking(ctx context.Context, model *bookingmodel.Booking) error
-	DeleteForceBooking(ctx context.Context, id uint64) error
-	DeleleBooking(ctx context.Context, id uint64) error
-	GetBookingById(ctx context.Context, id uint32) (*bookingmodel.Booking, error)
+	DeleteForceBooking(ctx context.Context, id string) error
+	DeleleBooking(ctx context.Context, id string) error
+	GetBookingById(ctx context.Context, id string) (*bookingmodel.Booking, error)
 }

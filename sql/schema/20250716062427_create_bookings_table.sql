@@ -1,7 +1,7 @@
 -- +goose Up
 -- +goose StatementBegin
 CREATE TABLE IF NOT EXISTS bookings (
-    booking_id BIGINT AUTO_INCREMENT PRIMARY KEY,          -- Booking ID
+    booking_id CHAR(36) PRIMARY KEY,                       -- Booking ID (UUID)
     trip_id BIGINT NOT NULL,                               -- Trip ID
     user_id BIGINT NULL,                                   -- User ID
 

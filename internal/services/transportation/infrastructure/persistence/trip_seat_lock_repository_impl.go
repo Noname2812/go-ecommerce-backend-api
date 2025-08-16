@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	commonenum "github.com/Noname2812/go-ecommerce-backend-api/internal/common/enum"
-	"github.com/Noname2812/go-ecommerce-backend-api/internal/common/utils"
 	"github.com/Noname2812/go-ecommerce-backend-api/internal/database"
 	transportationmodel "github.com/Noname2812/go-ecommerce-backend-api/internal/services/transportation/domain/model"
 	transportationrepository "github.com/Noname2812/go-ecommerce-backend-api/internal/services/transportation/domain/repository"
@@ -29,7 +28,7 @@ func (t *tripSeatLockRepository) GetListTripSeatLockByTripId(ctx context.Context
 	for _, result := range results {
 		response = append(response, &transportationmodel.TripSeatLock{
 			TripSeatLockId:        uint64(result.SeatID),
-			LockedByBookingId:     utils.NullInt64ToUint64Ptr(result.LockedByBookingID),
+			LockedByBookingId:     result.LockedByBookingID.String,
 			TripSeatLockStatus:    commonenum.SeatLockStatus(result.TripSeatLockStatus),
 			TripSeatLockExpiresAt: &result.TripSeatLockExpiresAt.Time,
 			Seat: &transportationmodel.Seat{
@@ -52,7 +51,7 @@ func (t *tripSeatLockRepository) CreateOrUpdateSeatLock(ctx context.Context, mod
 	return txQueries.CreateOrUpdateSeatLock(ctx, database.CreateOrUpdateSeatLockParams{
 		TripID:                int64(model.TripId),
 		SeatID:                int64(model.SeatId),
-		LockedByBookingID:     sql.NullInt64{Int64: int64(*model.LockedByBookingId), Valid: model.LockedByBookingId != nil},
+		LockedByBookingID:     model.LockedByBookingId,
 		TripSeatLockStatus:    uint8(model.TripSeatLockStatus),
 		TripSeatLockExpiresAt: sql.NullTime{Time: *model.TripSeatLockExpiresAt, Valid: model.TripSeatLockExpiresAt != nil},
 	})
@@ -64,7 +63,7 @@ func (t *tripSeatLockRepository) CreateTripSeatLock(ctx context.Context, model *
 	data := &database.AddTripSeatLockParams{
 		TripID:                int64(model.TripId),
 		SeatID:                int64(model.SeatId),
-		LockedByBookingID:     sql.NullInt64{Int64: int64(*model.LockedByBookingId), Valid: model.LockedByBookingId != nil},
+		LockedByBookingID:     model.LockedByBookingId,
 		TripSeatLockStatus:    uint8(model.TripSeatLockStatus),
 		TripSeatLockExpiresAt: sql.NullTime{Time: *model.TripSeatLockExpiresAt, Valid: model.TripSeatLockExpiresAt != nil},
 	}
@@ -89,7 +88,7 @@ func (t *tripSeatLockRepository) DeleleTripSeatLock(ctx context.Context, id uint
 // DeleteForceTripSeatLock implements transportationrepository.TripSeatLockRepository.
 func (t *tripSeatLockRepository) DeleteForceTripSeatLock(ctx context.Context, id uint64) error {
 	txQueries := t.getTripSeatLockQueries(ctx)
-	return txQueries.DeleteForceBooking(ctx, int64(id))
+	return txQueries.DeleteForceTripSeatLock(ctx, int64(id))
 }
 
 // GetTripSeatLockById implements transportationrepository.TripSeatLockRepository.
@@ -102,7 +101,7 @@ func (t *tripSeatLockRepository) GetTripSeatLockById(ctx context.Context, bookin
 		TripSeatLockId:        uint64(result.TripSeatLockID),
 		TripId:                uint64(result.TripID),
 		SeatId:                uint64(result.SeatID),
-		LockedByBookingId:     utils.NullInt64ToUint64Ptr(result.LockedByBookingID),
+		LockedByBookingId:     result.LockedByBookingID,
 		TripSeatLockStatus:    commonenum.SeatLockStatus(result.TripSeatLockStatus),
 		TripSeatLockExpiresAt: &result.TripSeatLockExpiresAt.Time,
 		TripSeatLockCreatedAt: result.TripSeatLockCreatedAt.Time,
@@ -115,7 +114,7 @@ func (t *tripSeatLockRepository) UpdateTripSeatLock(ctx context.Context, model *
 	txQueries := t.getTripSeatLockQueries(ctx)
 	params := &database.UpdateTripSeatLockParams{
 		SeatID:                int64(model.SeatId),
-		LockedByBookingID:     sql.NullInt64{Int64: int64(*model.LockedByBookingId), Valid: model.LockedByBookingId != nil},
+		LockedByBookingID:     model.LockedByBookingId,
 		TripSeatLockStatus:    uint8(model.TripSeatLockStatus),
 		TripSeatLockExpiresAt: sql.NullTime{Time: *model.TripSeatLockExpiresAt, Valid: model.TripSeatLockExpiresAt != nil},
 		TripSeatLockID:        int64(model.TripId),

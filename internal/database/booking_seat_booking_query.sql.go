@@ -20,7 +20,7 @@ INSERT INTO seat_bookings (
 `
 
 type AddSeatBookingParams struct {
-	BookingID             int64
+	BookingID             string
 	SeatBookingSeatNumber string
 	SeatBookingPrice      string
 	PassengerName         string

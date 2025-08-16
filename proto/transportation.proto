@@ -1,0 +1,90 @@
+// Transportation service
+syntax = "proto3";
+
+package transportation;
+
+option go_package = "./proto/transportation";
+
+// Transportation Service
+service TransportationService {
+  // Lock seats for booking
+  rpc LockSeats(LockSeatsRequest) returns (LockSeatsResponse);
+  
+  // Unlock seats (when booking fails or expires)
+  rpc UnlockSeats(UnlockSeatsRequest) returns (UnlockSeatsResponse);
+  
+  // Get seat status for a trip
+  rpc GetSeatStatus(GetSeatStatusRequest) returns (GetSeatStatusResponse);
+}
+
+// Lock Seats Request
+message LockSeatsRequest {
+  uint64 trip_id = 1; // trip id
+  string booking_id = 2; // booking id
+  repeated SeatInfo seats = 3; // list of seats to lock
+  int32 lock_duration_seconds = 4; // TTL in seconds
+}
+
+// Seat Info
+message SeatInfo {
+  uint64 seat_id = 1; // seat id
+  string seat_number = 2; // seat number
+}
+
+// Lock Seats Response
+message LockSeatsResponse { 
+  bool success = 1; // success
+  repeated SeatLockResult failed_seats = 2; // failed seats
+}
+
+// Seat Lock Result
+message SeatLockResult {
+  uint64 seat_id = 1; // seat id
+  string seat_number = 2; // seat number
+  string error_message = 3; // error message
+}
+
+// Unlock Seats Request
+message UnlockSeatsRequest {
+  uint64 trip_id = 1; // trip id
+  string booking_id = 2; // booking id
+  repeated uint64 seat_ids = 3; // list of seats to unlock
+}
+
+// Unlock Seats Response
+message UnlockSeatsResponse {
+  bool success = 1; // success
+  string message = 2; // message
+  int32 unlocked_count = 3; // unlocked count
+}
+
+// Get Seat Status Request
+message GetSeatStatusRequest {
+  uint64 trip_id = 1; // trip id
+}
+
+// Get Seat Status Response
+message GetSeatStatusResponse {
+  bool success = 1; // success
+  string message = 2; // message
+  repeated SeatStatus seats = 3; // list of seats
+}
+
+// Seat Status
+message SeatStatus {
+  uint64 seat_id = 1; // seat id
+  string seat_number = 2; // seat number
+  int32 row_no = 3; // row number
+  int32 column_no = 4; // column number
+  int32 floor_no = 5; // floor number
+  string seat_type = 6; // seat type
+  SeatLockStatus status = 7; // seat lock status
+  string locked_by_booking_id = 8; // locked by booking id
+}
+
+// Seat Lock Status Enum
+enum SeatLockStatus {
+  AVAILABLE = 0; // available
+  LOCKED = 1; // locked
+  BOOKED = 2; // booked
+}
